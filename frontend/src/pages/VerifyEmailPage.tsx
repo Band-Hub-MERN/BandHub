@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { Link, useSearchParams } from 'react-router-dom';
 import { buildPath } from '../components/Path';
@@ -7,6 +7,7 @@ function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
   const [message, setMessage] = useState('Verifying your email...');
   const [isError, setIsError] = useState(false);
+  const hasRequestedRef = useRef(false);
 
   useEffect(() => {
     const token = searchParams.get('token');
@@ -17,6 +18,11 @@ function VerifyEmailPage() {
       return;
     }
 
+    if (hasRequestedRef.current) {
+      return;
+    }
+
+    hasRequestedRef.current = true;
     void verifyEmail(token);
   }, [searchParams]);
 

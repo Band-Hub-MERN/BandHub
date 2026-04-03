@@ -1,9 +1,62 @@
 const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 
 const VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
+let transporterPromise = null;
 
 function getBaseUrl() {
   return process.env.APP_BASE_URL || 'http://localhost:5173';
+}
+
+function getMailConfig() {
+  const {
+    MAIL_HOST,
+    MAIL_PORT,
+    MAIL_SECURE,
+    MAIL_USER,
+    MAIL_PASS,
+    MAIL_FROM
+  } = process.env;
+
+  if (!MAIL_HOST || !MAIL_PORT || !MAIL_USER || !MAIL_PASS || !MAIL_FROM) {
+    return null;
+  }
+
+  return {
+    host: MAIL_HOST,
+    port: Number(MAIL_PORT),
+    secure: String(MAIL_SECURE || '').toLowerCase() === 'true' || String(MAIL_PORT) === '465',
+    auth: {
+      user: MAIL_USER,
+      pass: MAIL_PASS
+    },
+    from: MAIL_FROM
+  };
+}
+
+async function getTransporter() {
+  if (transporterPromise) {
+    return transporterPromise;
+  }
+
+  const mailConfig = getMailConfig();
+  if (!mailConfig) {
+    return null;
+  }
+
+  transporterPromise = (async () => {
+    const transporter = nodemailer.createTransport({
+      host: mailConfig.host,
+      port: mailConfig.port,
+      secure: mailConfig.secure,
+      auth: mailConfig.auth
+    });
+
+    await transporter.verify();
+    return transporter;
+  })();
+
+  return transporterPromise;
 }
 
 function buildVerificationUrl(token) {
@@ -20,13 +73,30 @@ function createVerificationFields() {
 
 async function sendVerificationEmail(email, token) {
   const verificationUrl = buildVerificationUrl(token);
+  const mailConfig = getMailConfig();
+  const transporter = await getTransporter();
 
-  // First-pass implementation: if no mail provider is configured yet,
-  // log the verification URL so the flow still works during development.
-  console.log(`[email verification] Send verification email to ${email}`);
-  console.log(`[email verification] Verification link: ${verificationUrl}`);
+  if (!mailConfig || !transporter) {
+    console.log(`[email verification] Send verification email to ${email}`);
+    console.log(`[email verification] Verification link: ${verificationUrl}`);
+    console.log('[email verification] SMTP is not configured, so the link was logged instead of emailed.');
+    return { verificationUrl, delivery: 'logged' };
+  }
 
-  return { verificationUrl };
+  await transporter.sendMail({
+    from: mailConfig.from,
+    to: email,
+    subject: 'Verify your Garage Jam account',
+    text: `Welcome to Garage Jam.\n\nVerify your email by opening this link:\n${verificationUrl}\n\nThis link expires in 24 hours.`,
+    html: [
+      '<p>Welcome to <strong>Garage Jam</strong>.</p>',
+      `<p>Verify your email by opening this link:</p><p><a href="${verificationUrl}">${verificationUrl}</a></p>`,
+      '<p>This link expires in 24 hours.</p>'
+    ].join('')
+  });
+
+  console.log(`[email verification] Sent verification email to ${email}`);
+  return { verificationUrl, delivery: 'email' };
 }
 
 module.exports = {
