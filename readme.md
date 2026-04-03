@@ -1,3 +1,5 @@
+### REVIEW README.MD IN VAULT FOR WORKFLOW GUIDE !!!
+
 ### FOR LOCAL TESTING
 #In main project directory terminal, run:
 "npm start"
