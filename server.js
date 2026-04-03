@@ -14,12 +14,13 @@ app.use(express.json());
  * keep that information private.
  */
 const url = process.env.MONGODB_URI;
+const dbName = process.env.MONGODB_DB_NAME || 'BandHub';
 const api = require('./api.js');
 let mongoReady = false;
-mongoose.connect(url, { dbName: 'COP4331Cards' })
+mongoose.connect(url, { dbName })
   .then(() => {
     mongoReady = true;
-    console.log('MongoDB connected');
+    console.log(`MongoDB connected (${dbName})`);
   })
   .catch((err) => {
     console.log('MongoDB connection failed. Running in temporary local mode.');
