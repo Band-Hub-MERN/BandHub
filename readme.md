@@ -1,12 +1,12 @@
-for local testing:
-start backend
-    npm start
-
-in the frontend directory terminal
-    npm run dev
+### FOR LOCAL TESTING
+#In main project directory terminal, run:
+"npm start"
+    
+#In the cd/frontend directory terminal, run:
+"npm run dev"
 
 open -> http://localhost:5173 or whatever localhost link you use.
 
--Doing it this way instead of docker ensures we still connect to the remote database linked in .env file. 
+-No local database here. We always connect to the remote database through cloud.mongodb.com linked in the hidden .env file.
 
 -We are using port 5001 instead of 5000. Anywhere in setup we saw 5000, use 5001 instead. Apple airplay or something uses 5000.
