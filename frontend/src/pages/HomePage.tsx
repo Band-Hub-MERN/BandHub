@@ -174,7 +174,7 @@ function HomePage() {
     <div className="page-shell">
       <header className="home-header">
         <div>
-          <h1 className="brand-title">Band Hub</h1>
+          <h1 className="brand-title">Garage Jam</h1>
           <p className="brand-subtitle">
             Welcome, {user.displayName} ({user.accountType})
           </p>

@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import type { ReactElement } from 'react';
 import LoginPage from './pages/LoginPage.tsx';
 import HomePage from './pages/HomePage.tsx';
+import VerifyEmailPage from './pages/VerifyEmailPage.tsx';
 import { hasSession } from './utils/session';
 
 function ProtectedRoute({ children }: { children: ReactElement }) {
@@ -17,6 +18,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<LoginPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route
           path="/home"
           element={(

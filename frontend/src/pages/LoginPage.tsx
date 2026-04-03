@@ -72,13 +72,11 @@ function LoginPage() {
         accountType,
         memberRoleLabel
       });
-
-      const accessToken: string = response.data.accessToken;
-      const user: SessionUser = response.data.user;
-
-      storeToken(accessToken);
-      storeUser(user);
-      navigate('/home');
+      const apiMessage: string | undefined = response.data.message;
+      setMessage(apiMessage || 'Account created. Please check your email to verify your account.');
+      setMode('login');
+      setPassword('');
+      setConfirmPassword('');
     } catch (error: any) {
       const details: string[] | undefined = error?.response?.data?.details;
       if (Array.isArray(details) && details.length > 0) {
@@ -93,8 +91,12 @@ function LoginPage() {
   return (
     <div className="page-shell">
       <header className="page-header">
-        <h1 className="brand-title">Band Hub</h1>
-        <p className="brand-subtitle">UCF Garage Practice + Event Planning</p>
+        <div className="brand-copy">
+          <h1 className="brand-title">Garage Jam</h1>
+          <p className="brand-subtitle">UCF Garage Practice + Event Planning</p>
+        </div>
+
+        <img className="header-logo" src="/UCF_Knights_logo.svg" alt="UCF logo" />
       </header>
 
       <main className="auth-card">
@@ -135,7 +137,8 @@ function LoginPage() {
               Account Type
               <select value={accountType} onChange={(e) => setAccountType(e.target.value as AccountType)}>
                 <option value="fan">Fan</option>
-                <option value="member">Member</option>
+                <option value="member">Band</option>
+                <option value="music group">Music Group</option>
               </select>
             </label>
 

@@ -31,6 +31,18 @@ const AccountUserSchema = new Schema({
   memberRoleLabel: {
     type: String,
     default: ''
+  },
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
+  verificationToken: {
+    type: String,
+    default: null
+  },
+  verificationExpiresAt: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true,

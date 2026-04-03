@@ -3,6 +3,7 @@ export type AccountType = 'fan' | 'member';
 export interface SessionUser {
   id: string;
   email: string;
+  isVerified?: boolean;
   accountType: AccountType;
   displayName: string;
   organizationId: string | null;

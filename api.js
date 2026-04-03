@@ -8,6 +8,7 @@ const OrganizationInvite = require('./models/organizationInvite.js');
 const authToken = require('./authToken.js');
 const { validatePasswordPolicy } = require('./utils/passwordPolicy.js');
 const { hashPassword, verifyPassword } = require('./utils/passwordHash.js');
+const { createVerificationFields, sendVerificationEmail } = require('./utils/emailVerification.js');
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -46,6 +47,7 @@ function buildSafeUser(user) {
     return {
         id: String(user._id),
         email: user.email,
+        isVerified: Boolean(user.isVerified),
         accountType: user.accountType,
         displayName: user.displayName,
         organizationId: user.organizationId ? String(user.organizationId) : null,
@@ -87,19 +89,23 @@ exports.setApp = function (app, mongoose, state) {
         }
 
         const passwordHash = await hashPassword(password);
+        const verificationFields = createVerificationFields();
         const newUser = new AccountUser({
             email: normalizedEmail,
             passwordHash,
             accountType,
             displayName: String(displayName).trim(),
-            memberRoleLabel: accountType === 'member' ? String(memberRoleLabel || '') : ''
+            memberRoleLabel: accountType === 'member' ? String(memberRoleLabel || '') : '',
+            isVerified: false,
+            verificationToken: verificationFields.verificationToken,
+            verificationExpiresAt: verificationFields.verificationExpiresAt
         });
 
         await newUser.save();
+        await sendVerificationEmail(newUser.email, newUser.verificationToken);
 
-        const accessToken = authToken.createAuthToken(newUser);
         res.status(201).json({
-            accessToken,
+            message: 'Account created. Please check your email to verify your account before logging in.',
             user: buildSafeUser(newUser)
         });
     });
@@ -125,11 +131,52 @@ exports.setApp = function (app, mongoose, state) {
             return;
         }
 
+        if (!user.isVerified) {
+            res.status(403).json({ error: 'Please verify your email before logging in.' });
+            return;
+        }
+
         const accessToken = authToken.createAuthToken(user);
         res.status(200).json({
             accessToken,
             user: buildSafeUser(user)
         });
+    });
+
+    app.get('/api/auth/verify', async (req, res) => {
+        const verificationToken = String(req.query?.token || '').trim();
+        if (!verificationToken) {
+            res.status(400).json({ error: 'Missing verification token' });
+            return;
+        }
+
+        const user = await AccountUser.findOne({ verificationToken });
+        if (!user) {
+            res.status(404).json({ error: 'Verification link is invalid.' });
+            return;
+        }
+
+        if (user.isVerified) {
+            res.status(200).json({ message: 'Email is already verified.' });
+            return;
+        }
+
+        if (!user.verificationExpiresAt || user.verificationExpiresAt.getTime() < Date.now()) {
+            const replacementFields = createVerificationFields();
+            user.verificationToken = replacementFields.verificationToken;
+            user.verificationExpiresAt = replacementFields.verificationExpiresAt;
+            await user.save();
+            await sendVerificationEmail(user.email, user.verificationToken);
+            res.status(400).json({ error: 'Verification link expired. A new link has been generated and logged for development use.' });
+            return;
+        }
+
+        user.isVerified = true;
+        user.verificationToken = null;
+        user.verificationExpiresAt = null;
+        await user.save();
+
+        res.status(200).json({ message: 'Email verified successfully. You can now log in.' });
     });
 
     app.get('/api/auth/me', async (req, res) => {
