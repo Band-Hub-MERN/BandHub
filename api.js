@@ -99,7 +99,15 @@ exports.setApp = function (app) {
         });
 
         await newUser.save();
-        await sendVerificationEmail(newUser.email, newUser.verificationToken);
+
+        try {
+            await sendVerificationEmail(newUser.email, newUser.verificationToken);
+        }
+        catch (error) {
+            await AccountUser.deleteOne({ _id: newUser._id });
+            res.status(500).json({ error: 'Unable to send verification email. Please try registering again.' });
+            return;
+        }
 
         res.status(201).json({
             message: 'Account created. Please check your email to verify your account before logging in.',
@@ -163,7 +171,13 @@ exports.setApp = function (app) {
             user.verificationToken = replacementFields.verificationToken;
             user.verificationExpiresAt = replacementFields.verificationExpiresAt;
             await user.save();
-            await sendVerificationEmail(user.email, user.verificationToken);
+            try {
+                await sendVerificationEmail(user.email, user.verificationToken);
+            }
+            catch (error) {
+                res.status(500).json({ error: 'Unable to send a new verification email right now. Please try again later.' });
+                return;
+            }
             res.status(400).json({ error: 'Verification link expired. A new link has been generated and logged for development use.' });
             return;
         }
