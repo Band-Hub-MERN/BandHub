@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { buildPath } from '../components/Path';
 import { storeToken } from '../tokenStorage';
+import { buildPath } from '../utils/api';
 import { hasSession, storeUser } from '../utils/session';
 import type { AccountType, SessionUser } from '../utils/session';
 

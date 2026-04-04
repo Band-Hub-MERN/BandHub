@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { buildPath } from '../components/Path';
 import { retrieveToken, storeToken } from '../tokenStorage';
+import { buildPath } from '../utils/api';
 import { clearSession, getStoredUser, hasSession, storeUser } from '../utils/session';
 
 interface HomeSessionUser {
