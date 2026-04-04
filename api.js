@@ -104,6 +104,7 @@ exports.setApp = function (app) {
             await sendVerificationEmail(newUser.email, newUser.verificationToken);
         }
         catch (error) {
+            console.error('Failed to send verification email during registration:', error);
             await AccountUser.deleteOne({ _id: newUser._id });
             res.status(500).json({ error: 'Unable to send verification email. Please try registering again.' });
             return;
@@ -175,6 +176,7 @@ exports.setApp = function (app) {
                 await sendVerificationEmail(user.email, user.verificationToken);
             }
             catch (error) {
+                console.error('Failed to resend verification email:', error);
                 res.status(500).json({ error: 'Unable to send a new verification email right now. Please try again later.' });
                 return;
             }
@@ -187,7 +189,12 @@ exports.setApp = function (app) {
         user.verificationExpiresAt = null;
         await user.save();
 
-        res.status(200).json({ message: 'Email verified successfully. You can now log in.' });
+        const accessToken = authToken.createAuthToken(user);
+        res.status(200).json({
+            message: 'Email verified successfully. Logging you in now.',
+            accessToken,
+            user: buildSafeUser(user)
+        });
     });
 
     app.get('/api/auth/me', async (req, res) => {
