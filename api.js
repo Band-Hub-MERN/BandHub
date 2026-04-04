@@ -1,13 +1,23 @@
 require('express');
+const crypto = require('crypto');
 const AccountUser = require('./models/accountUser.js');
 const OrganizationProfile = require('./models/organizationProfile.js');
 const OrganizationInvite = require('./models/organizationInvite.js');
 const authToken = require('./authToken.js');
 const { validatePasswordPolicy } = require('./utils/passwordPolicy.js');
 const { hashPassword, verifyPassword } = require('./utils/passwordHash.js');
-const { createVerificationFields, sendVerificationEmail } = require('./utils/emailVerification.js');
+const { createVerificationFields, validateEmailAddress, sendVerificationEmail } = require('./utils/emailVerification.js');
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const TERMINAL_EMAIL_DELIVERY_STATUSES = new Set([
+    'delivered',
+    'verified',
+    'bounced',
+    'bounced_invalid',
+    'dropped',
+    'blocked'
+]);
+const INVALID_EMAIL_REASON_PATTERN = /does not exist|invalid address|invalid mailbox|mailbox unavailable|no such user|user unknown|unknown user|unknown recipient|recipient rejected|address rejected|mailbox not found/i;
 
 function getBearerToken(req) {
     const authHeader = req.headers?.authorization || '';
@@ -52,6 +62,20 @@ function buildSafeUser(user) {
     };
 }
 
+function createRegistrationStatusToken() {
+    return crypto.randomBytes(18).toString('hex');
+}
+
+function buildRegisterStatus(user) {
+    const status = user.emailDeliveryStatus || 'pending';
+
+    return {
+        status,
+        message: user.emailDeliveryMessage || '',
+        shouldStopPolling: TERMINAL_EMAIL_DELIVERY_STATUSES.has(status)
+    };
+}
+
 exports.setApp = function (app) {
     app.post('/api/auth/register', async (req, res) => {
         const {
@@ -81,7 +105,20 @@ exports.setApp = function (app) {
         const normalizedEmail = String(email).toLowerCase().trim();
         const existing = await AccountUser.findOne({ email: normalizedEmail });
         if (existing) {
+            if (!existing.isVerified && existing.emailDeliveryStatus === 'bounced_invalid') {
+                await AccountUser.deleteOne({ _id: existing._id });
+            }
+            else {
             res.status(409).json({ error: 'Email already in use' });
+            return;
+            }
+        }
+
+        const emailValidation = await validateEmailAddress(normalizedEmail);
+        if (emailValidation.checked && emailValidation.isInvalid) {
+            res.status(400).json({
+                error: emailValidation.message || 'That email address appears not to exist or receive email.'
+            });
             return;
         }
 
@@ -95,7 +132,11 @@ exports.setApp = function (app) {
             memberRoleLabel: accountType === 'member' ? String(memberRoleLabel || '') : '',
             isVerified: false,
             verificationToken: verificationFields.verificationToken,
-            verificationExpiresAt: verificationFields.verificationExpiresAt
+            verificationExpiresAt: verificationFields.verificationExpiresAt,
+            emailDeliveryStatus: 'pending',
+            emailDeliveryMessage: '',
+            emailDeliveryUpdatedAt: new Date(),
+            registrationStatusToken: createRegistrationStatusToken()
         });
 
         await newUser.save();
@@ -111,9 +152,87 @@ exports.setApp = function (app) {
         }
 
         res.status(201).json({
-            message: 'Account created. Please check your email to verify your account before logging in.',
+            message: 'Account created. Please check your email to verify your account before logging in. If you do not receive it soon, double-check the email address and your spam folder.',
+            registrationStatusToken: newUser.registrationStatusToken,
             user: buildSafeUser(newUser)
         });
+    });
+
+    app.get('/api/auth/register-status', async (req, res) => {
+        const registrationStatusToken = String(req.query?.token || '').trim();
+        if (!registrationStatusToken) {
+            res.status(400).json({ error: 'Missing registration status token' });
+            return;
+        }
+
+        const user = await AccountUser.findOne({ registrationStatusToken });
+        if (!user) {
+            res.status(404).json({ error: 'Registration status not found' });
+            return;
+        }
+
+        res.status(200).json(buildRegisterStatus(user));
+    });
+
+    app.post('/api/sendgrid/events', async (req, res) => {
+        const expectedWebhookToken = String(process.env.SENDGRID_EVENT_WEBHOOK_TOKEN || '').trim();
+        if (expectedWebhookToken) {
+            const providedWebhookToken = String(req.query?.token || '').trim();
+            if (providedWebhookToken !== expectedWebhookToken) {
+                res.status(401).json({ error: 'Invalid webhook token' });
+                return;
+            }
+        }
+
+        const events = Array.isArray(req.body) ? req.body : [];
+        for (const event of events) {
+            const email = String(event?.email || '').toLowerCase().trim();
+            if (!email) {
+                continue;
+            }
+
+            const user = await AccountUser.findOne({ email, isVerified: false });
+            if (!user) {
+                continue;
+            }
+
+            const eventType = String(event?.event || '').toLowerCase().trim();
+            if (eventType === 'processed' || eventType === 'deferred') {
+                user.emailDeliveryStatus = eventType;
+                user.emailDeliveryMessage = '';
+                user.emailDeliveryUpdatedAt = new Date();
+                await user.save();
+                continue;
+            }
+
+            if (eventType === 'delivered') {
+                user.emailDeliveryStatus = 'delivered';
+                user.emailDeliveryMessage = '';
+                user.emailDeliveryUpdatedAt = new Date();
+                await user.save();
+                continue;
+            }
+
+            if (eventType === 'bounce' || eventType === 'dropped' || eventType === 'blocked') {
+                const bounceClassification = String(event?.bounce_classification || '').toLowerCase().trim();
+                const statusCode = String(event?.status || '').trim();
+                const reason = String(event?.reason || '').trim();
+                const responseText = String(event?.response || '').trim();
+                const isInvalidAddress = bounceClassification === 'invalid address'
+                    || statusCode === '5.1.1'
+                    || INVALID_EMAIL_REASON_PATTERN.test(reason)
+                    || INVALID_EMAIL_REASON_PATTERN.test(responseText);
+
+                user.emailDeliveryStatus = isInvalidAddress ? 'bounced_invalid' : eventType;
+                user.emailDeliveryMessage = isInvalidAddress
+                    ? 'That email address appears not to exist. Please double-check it for typos and try again.'
+                    : 'We could not deliver the verification email. Please double-check the address and try again.';
+                user.emailDeliveryUpdatedAt = new Date();
+                await user.save();
+            }
+        }
+
+        res.status(200).json({ received: events.length });
     });
 
     app.post('/api/auth/login', async (req, res) => {
@@ -171,6 +290,9 @@ exports.setApp = function (app) {
             const replacementFields = createVerificationFields();
             user.verificationToken = replacementFields.verificationToken;
             user.verificationExpiresAt = replacementFields.verificationExpiresAt;
+            user.emailDeliveryStatus = 'pending';
+            user.emailDeliveryMessage = '';
+            user.emailDeliveryUpdatedAt = new Date();
             await user.save();
             try {
                 await sendVerificationEmail(user.email, user.verificationToken);
@@ -187,6 +309,10 @@ exports.setApp = function (app) {
         user.isVerified = true;
         user.verificationToken = null;
         user.verificationExpiresAt = null;
+        user.emailDeliveryStatus = 'verified';
+        user.emailDeliveryMessage = '';
+        user.emailDeliveryUpdatedAt = new Date();
+        user.registrationStatusToken = null;
         await user.save();
 
         const accessToken = authToken.createAuthToken(user);
