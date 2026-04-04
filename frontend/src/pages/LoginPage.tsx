@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +11,7 @@ type Mode = 'login' | 'register';
 
 function LoginPage() {
   const navigate = useNavigate();
+  const registerStatusPollRef = useRef<number | null>(null);
 
   const [mode, setMode] = useState<Mode>('login');
   const [message, setMessage] = useState('');
@@ -30,10 +31,77 @@ function LoginPage() {
     }
   }, [navigate]);
 
+  useEffect(() => {
+    return () => {
+      stopRegistrationStatusPolling();
+    };
+  }, []);
+
+  function stopRegistrationStatusPolling(): void {
+    if (registerStatusPollRef.current !== null) {
+      window.clearTimeout(registerStatusPollRef.current);
+      registerStatusPollRef.current = null;
+    }
+  }
+
+  function startRegistrationStatusPolling(registrationStatusToken: string): void {
+    stopRegistrationStatusPolling();
+    let attempts = 0;
+
+    const poll = async () => {
+      attempts += 1;
+
+      try {
+        const response = await axios.get(
+          buildPath(`api/auth/register-status?token=${encodeURIComponent(registrationStatusToken)}`)
+        );
+
+        const status: string = response.data.status || 'pending';
+        const statusMessage: string = response.data.message || '';
+        const shouldStopPolling: boolean = Boolean(response.data.shouldStopPolling);
+
+        if (status === 'bounced_invalid') {
+          setMode('register');
+          setMessage(
+            statusMessage
+            || 'That email address appears not to exist. Please double-check it for typos and try again.'
+          );
+          stopRegistrationStatusPolling();
+          return;
+        }
+
+        if (status === 'bounced' || status === 'dropped') {
+          setMode('register');
+          setMessage(
+            statusMessage
+            || 'We could not deliver the verification email. Please double-check the address and try again.'
+          );
+          stopRegistrationStatusPolling();
+          return;
+        }
+
+        if (shouldStopPolling || attempts >= 10) {
+          stopRegistrationStatusPolling();
+          return;
+        }
+      } catch {
+        if (attempts >= 10) {
+          stopRegistrationStatusPolling();
+          return;
+        }
+      }
+
+      registerStatusPollRef.current = window.setTimeout(poll, 2000);
+    };
+
+    registerStatusPollRef.current = window.setTimeout(poll, 2000);
+  }
+
   async function handleLogin(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setMessage('');
     setIsSubmitting(true);
+    stopRegistrationStatusPolling();
 
     try {
       const response = await axios.post(buildPath('api/auth/login'), {
@@ -58,6 +126,7 @@ function LoginPage() {
     event.preventDefault();
     setMessage('');
     setIsSubmitting(true);
+    stopRegistrationStatusPolling();
 
     if (password !== confirmPassword) {
       setMessage('Password and confirm password must match.');
@@ -80,11 +149,18 @@ function LoginPage() {
         accountType,
         memberRoleLabel
       });
+      const registrationStatusToken: string | undefined = response.data.registrationStatusToken;
       const apiMessage: string | undefined = response.data.message;
-      setMessage(apiMessage || 'Account created. Please check your email to verify your account.');
+      setMessage(
+        apiMessage
+        || 'Account created. Please check your email to verify your account. If you do not receive it soon, double-check the email address and your spam folder.'
+      );
       setMode('login');
       setPassword('');
       setConfirmPassword('');
+      if (registrationStatusToken) {
+        startRegistrationStatusPolling(registrationStatusToken);
+      }
     } catch (error: any) {
       const details: string[] | undefined = error?.response?.data?.details;
       if (Array.isArray(details) && details.length > 0) {

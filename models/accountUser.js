@@ -43,6 +43,22 @@ const AccountUserSchema = new Schema({
   verificationExpiresAt: {
     type: Date,
     default: null
+  },
+  emailDeliveryStatus: {
+    type: String,
+    default: 'pending'
+  },
+  emailDeliveryMessage: {
+    type: String,
+    default: ''
+  },
+  emailDeliveryUpdatedAt: {
+    type: Date,
+    default: null
+  },
+  registrationStatusToken: {
+    type: String,
+    default: null
   }
 }, {
   timestamps: true,

@@ -1,9 +1,11 @@
 const crypto = require('crypto');
 const dns = require('dns').promises;
+const sgMail = require('@sendgrid/mail');
 const nodemailer = require('nodemailer');
 
 const VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
 let transporterPromise = null;
+let configuredSendGridApiKey = null;
 
 function getBaseUrl() {
   return process.env.APP_BASE_URL || 'http://localhost:5173';
@@ -33,6 +35,46 @@ function getMailConfig() {
     },
     from: MAIL_FROM
   };
+}
+
+function getSendGridConfig() {
+  const {
+    SENDGRID_API_KEY,
+    SENDGRID_FROM_EMAIL,
+    SENDGRID_FROM_NAME,
+    MAIL_FROM
+  } = process.env;
+
+  const fromEmail = SENDGRID_FROM_EMAIL || MAIL_FROM;
+  if (!SENDGRID_API_KEY || !fromEmail) {
+    return null;
+  }
+
+  return {
+    apiKey: SENDGRID_API_KEY,
+    fromEmail,
+    fromName: SENDGRID_FROM_NAME || ''
+  };
+}
+
+function getSendGridFrom(config) {
+  if (!config.fromName) {
+    return config.fromEmail;
+  }
+
+  return {
+    email: config.fromEmail,
+    name: config.fromName
+  };
+}
+
+function configureSendGrid(config) {
+  if (configuredSendGridApiKey === config.apiKey) {
+    return;
+  }
+
+  sgMail.setApiKey(config.apiKey);
+  configuredSendGridApiKey = config.apiKey;
 }
 
 async function getTransporter() {
@@ -93,8 +135,28 @@ function createVerificationFields() {
 
 async function sendVerificationEmail(email, token) {
   const verificationUrl = buildVerificationUrl(token);
+  const sendGridConfig = getSendGridConfig();
   const mailConfig = getMailConfig();
-  const transporter = await getTransporter();
+  const transporter = sendGridConfig ? null : await getTransporter();
+
+  if (sendGridConfig) {
+    configureSendGrid(sendGridConfig);
+
+    await sgMail.send({
+      to: email,
+      from: getSendGridFrom(sendGridConfig),
+      subject: 'Verify your Garage Jam account',
+      text: `Welcome to Garage Jam.\n\nVerify your email by opening this link:\n${verificationUrl}\n\nThis link expires in 24 hours.`,
+      html: [
+        '<p>Welcome to <strong>Garage Jam</strong>.</p>',
+        `<p>Verify your email by opening this link:</p><p><a href="${verificationUrl}">${verificationUrl}</a></p>`,
+        '<p>This link expires in 24 hours.</p>'
+      ].join('')
+    });
+
+    console.log(`[email verification] Sent verification email to ${email} via SendGrid`);
+    return { verificationUrl, delivery: 'sendgrid' };
+  }
 
   if (!mailConfig || !transporter) {
     console.log(`[email verification] Send verification email to ${email}`);
