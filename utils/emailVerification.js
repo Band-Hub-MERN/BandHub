@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const dns = require('dns').promises;
 const nodemailer = require('nodemailer');
 
 const VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
@@ -45,15 +46,34 @@ async function getTransporter() {
   }
 
   transporterPromise = (async () => {
+    let transportHost = mailConfig.host;
+    let tlsOptions;
+
+    try {
+      const ipv4Addresses = await dns.resolve4(mailConfig.host);
+      if (ipv4Addresses.length > 0) {
+        transportHost = ipv4Addresses[0];
+        tlsOptions = { servername: mailConfig.host };
+      }
+    } catch (error) {
+      // Fall back to the configured hostname if IPv4 resolution is unavailable.
+    }
+
     const transporter = nodemailer.createTransport({
-      host: mailConfig.host,
+      host: transportHost,
       port: mailConfig.port,
       secure: mailConfig.secure,
-      auth: mailConfig.auth
+      auth: mailConfig.auth,
+      tls: tlsOptions
     });
 
-    await transporter.verify();
-    return transporter;
+    try {
+      await transporter.verify();
+      return transporter;
+    } catch (error) {
+      transporterPromise = null;
+      throw error;
+    }
   })();
 
   return transporterPromise;
