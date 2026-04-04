@@ -6,9 +6,18 @@ const OrganizationInvite = require('./models/organizationInvite.js');
 const authToken = require('./authToken.js');
 const { validatePasswordPolicy } = require('./utils/passwordPolicy.js');
 const { hashPassword, verifyPassword } = require('./utils/passwordHash.js');
-const { createVerificationFields, sendVerificationEmail } = require('./utils/emailVerification.js');
+const { createVerificationFields, validateEmailAddress, sendVerificationEmail } = require('./utils/emailVerification.js');
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const TERMINAL_EMAIL_DELIVERY_STATUSES = new Set([
+    'delivered',
+    'verified',
+    'bounced',
+    'bounced_invalid',
+    'dropped',
+    'blocked'
+]);
+const INVALID_EMAIL_REASON_PATTERN = /does not exist|invalid address|invalid mailbox|mailbox unavailable|no such user|user unknown|unknown user|unknown recipient|recipient rejected|address rejected|mailbox not found/i;
 
 function getBearerToken(req) {
     const authHeader = req.headers?.authorization || '';
@@ -63,7 +72,7 @@ function buildRegisterStatus(user) {
     return {
         status,
         message: user.emailDeliveryMessage || '',
-        shouldStopPolling: ['delivered', 'verified', 'bounced', 'bounced_invalid', 'dropped'].includes(status)
+        shouldStopPolling: TERMINAL_EMAIL_DELIVERY_STATUSES.has(status)
     };
 }
 
@@ -103,6 +112,14 @@ exports.setApp = function (app) {
             res.status(409).json({ error: 'Email already in use' });
             return;
             }
+        }
+
+        const emailValidation = await validateEmailAddress(normalizedEmail);
+        if (emailValidation.checked && emailValidation.isInvalid) {
+            res.status(400).json({
+                error: emailValidation.message || 'That email address appears not to exist or receive email.'
+            });
+            return;
         }
 
         const passwordHash = await hashPassword(password);
@@ -196,11 +213,15 @@ exports.setApp = function (app) {
                 continue;
             }
 
-            if (eventType === 'bounce' || eventType === 'dropped') {
+            if (eventType === 'bounce' || eventType === 'dropped' || eventType === 'blocked') {
                 const bounceClassification = String(event?.bounce_classification || '').toLowerCase().trim();
                 const statusCode = String(event?.status || '').trim();
                 const reason = String(event?.reason || '').trim();
-                const isInvalidAddress = bounceClassification === 'invalid address' || statusCode === '5.1.1' || /does not exist/i.test(reason);
+                const responseText = String(event?.response || '').trim();
+                const isInvalidAddress = bounceClassification === 'invalid address'
+                    || statusCode === '5.1.1'
+                    || INVALID_EMAIL_REASON_PATTERN.test(reason)
+                    || INVALID_EMAIL_REASON_PATTERN.test(responseText);
 
                 user.emailDeliveryStatus = isInvalidAddress ? 'bounced_invalid' : eventType;
                 user.emailDeliveryMessage = isInvalidAddress

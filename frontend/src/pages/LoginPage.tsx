@@ -9,12 +9,20 @@ import type { AccountType, SessionUser } from '../utils/session';
 
 type Mode = 'login' | 'register';
 
+const REGISTRATION_STATUS_INITIAL_DELAY_MS = 6000;
+const REGISTRATION_STATUS_POLL_INTERVAL_MS = 2000;
+const REGISTRATION_STATUS_POLL_TIMEOUT_MS = 30 * 1000;
+const REGISTERING_MESSAGE_MIN_DURATION_MS = 1500;
+const REGISTRATION_STATUS_PENDING_MESSAGE =
+  'We sent the verification email. If it does not arrive shortly, check your spam or junk folder, then double-check the address and try again.';
+
 function LoginPage() {
   const navigate = useNavigate();
   const registerStatusPollRef = useRef<number | null>(null);
 
   const [mode, setMode] = useState<Mode>('login');
-  const [message, setMessage] = useState('');
+  const [loginMessage, setLoginMessage] = useState('');
+  const [registerMessage, setRegisterMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [email, setEmail] = useState('');
@@ -44,12 +52,37 @@ function LoginPage() {
     }
   }
 
-  function startRegistrationStatusPolling(registrationStatusToken: string): void {
+  function clearMessages(): void {
+    setLoginMessage('');
+    setRegisterMessage('');
+  }
+
+  function showLoginMessage(nextMessage: string): void {
+    setRegisterMessage('');
+    setLoginMessage(nextMessage);
+  }
+
+  function showRegisterMessage(nextMessage: string): void {
+    setLoginMessage('');
+    setRegisterMessage(nextMessage);
+  }
+
+  function handleModeChange(nextMode: Mode): void {
     stopRegistrationStatusPolling();
-    let attempts = 0;
+    clearMessages();
+    setMode(nextMode);
+  }
+
+  function startRegistrationStatusPolling(registrationStatusToken: string, startedAt = Date.now()): void {
+    stopRegistrationStatusPolling();
+    showLoginMessage(REGISTRATION_STATUS_PENDING_MESSAGE);
 
     const poll = async () => {
-      attempts += 1;
+      const pollExpired = Date.now() - startedAt >= REGISTRATION_STATUS_POLL_TIMEOUT_MS;
+      if (pollExpired) {
+        stopRegistrationStatusPolling();
+        return;
+      }
 
       try {
         const response = await axios.get(
@@ -62,7 +95,7 @@ function LoginPage() {
 
         if (status === 'bounced_invalid') {
           setMode('register');
-          setMessage(
+          showRegisterMessage(
             statusMessage
             || 'That email address appears not to exist. Please double-check it for typos and try again.'
           );
@@ -70,9 +103,9 @@ function LoginPage() {
           return;
         }
 
-        if (status === 'bounced' || status === 'dropped') {
+        if (status === 'bounced' || status === 'dropped' || status === 'blocked') {
           setMode('register');
-          setMessage(
+          showRegisterMessage(
             statusMessage
             || 'We could not deliver the verification email. Please double-check the address and try again.'
           );
@@ -80,26 +113,36 @@ function LoginPage() {
           return;
         }
 
-        if (shouldStopPolling || attempts >= 10) {
+        if (status === 'pending' || status === 'processed' || status === 'deferred') {
+          showLoginMessage(REGISTRATION_STATUS_PENDING_MESSAGE);
+        }
+
+        if (shouldStopPolling) {
           stopRegistrationStatusPolling();
           return;
         }
       } catch {
-        if (attempts >= 10) {
+        if (pollExpired) {
           stopRegistrationStatusPolling();
           return;
         }
       }
 
-      registerStatusPollRef.current = window.setTimeout(poll, 2000);
+      registerStatusPollRef.current = window.setTimeout(poll, REGISTRATION_STATUS_POLL_INTERVAL_MS);
     };
 
-    registerStatusPollRef.current = window.setTimeout(poll, 2000);
+    registerStatusPollRef.current = window.setTimeout(poll, REGISTRATION_STATUS_INITIAL_DELAY_MS);
+  }
+
+  function wait(ms: number): Promise<void> {
+    return new Promise((resolve) => {
+      window.setTimeout(resolve, ms);
+    });
   }
 
   async function handleLogin(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    setMessage('');
+    setLoginMessage('');
     setIsSubmitting(true);
     stopRegistrationStatusPolling();
 
@@ -116,7 +159,7 @@ function LoginPage() {
       storeUser(user);
       navigate('/home');
     } catch (error) {
-      setMessage('Login failed. Please check your credentials.');
+      setLoginMessage('Login failed. Please check your credentials.');
     } finally {
       setIsSubmitting(false);
     }
@@ -124,24 +167,25 @@ function LoginPage() {
 
   async function handleRegister(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    setMessage('');
+    setRegisterMessage('');
     setIsSubmitting(true);
     stopRegistrationStatusPolling();
 
     if (password !== confirmPassword) {
-      setMessage('Password and confirm password must match.');
+      setRegisterMessage('Password and confirm password must match.');
       setIsSubmitting(false);
       return;
     }
 
     if (!displayName.trim()) {
-      setMessage('Display name is required.');
+      setRegisterMessage('Display name is required.');
       setIsSubmitting(false);
       return;
     }
 
     try {
-      setMessage('Creating your account and sending your verification email...');
+      const registerStartTime = Date.now();
+      setRegisterMessage('Creating your account and sending your verification email...');
       const response = await axios.post(buildPath('api/auth/register'), {
         email,
         password,
@@ -149,12 +193,12 @@ function LoginPage() {
         accountType,
         memberRoleLabel
       });
+      const elapsed = Date.now() - registerStartTime;
+      if (elapsed < REGISTERING_MESSAGE_MIN_DURATION_MS) {
+        await wait(REGISTERING_MESSAGE_MIN_DURATION_MS - elapsed);
+      }
       const registrationStatusToken: string | undefined = response.data.registrationStatusToken;
-      const apiMessage: string | undefined = response.data.message;
-      setMessage(
-        apiMessage
-        || 'Account created. Please check your email to verify your account. If you do not receive it soon, double-check the email address and your spam folder.'
-      );
+      showLoginMessage(REGISTRATION_STATUS_PENDING_MESSAGE);
       setMode('login');
       setPassword('');
       setConfirmPassword('');
@@ -164,11 +208,11 @@ function LoginPage() {
     } catch (error: any) {
       const details: string[] | undefined = error?.response?.data?.details;
       if (Array.isArray(details) && details.length > 0) {
-        setMessage(details.join(' | '));
+        setRegisterMessage(details.join(' | '));
         return;
       }
       const apiError: string | undefined = error?.response?.data?.error;
-      setMessage(apiError || 'Registration failed.');
+      setRegisterMessage(apiError || 'Registration failed.');
     } finally {
       setIsSubmitting(false);
     }
@@ -189,14 +233,14 @@ function LoginPage() {
         <div className="auth-tabs">
           <button
             className={mode === 'login' ? 'tab-btn active' : 'tab-btn'}
-            onClick={() => setMode('login')}
+            onClick={() => handleModeChange('login')}
             type="button"
           >
             Login
           </button>
           <button
             className={mode === 'register' ? 'tab-btn active' : 'tab-btn'}
-            onClick={() => setMode('register')}
+            onClick={() => handleModeChange('register')}
             type="button"
           >
             Register
@@ -272,7 +316,8 @@ function LoginPage() {
           </form>
         )}
 
-        {message && <p className="form-message">{message}</p>}
+        {mode === 'login' && loginMessage && <p className="form-message">{loginMessage}</p>}
+        {mode === 'register' && registerMessage && <p className="form-message">{registerMessage}</p>}
       </main>
     </div>
   );
