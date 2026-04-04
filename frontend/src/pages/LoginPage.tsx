@@ -14,6 +14,7 @@ function LoginPage() {
 
   const [mode, setMode] = useState<Mode>('login');
   const [message, setMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,6 +33,7 @@ function LoginPage() {
   async function handleLogin(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setMessage('');
+    setIsSubmitting(true);
 
     try {
       const response = await axios.post(buildPath('api/auth/login'), {
@@ -47,24 +49,30 @@ function LoginPage() {
       navigate('/home');
     } catch (error) {
       setMessage('Login failed. Please check your credentials.');
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
   async function handleRegister(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setMessage('');
+    setIsSubmitting(true);
 
     if (password !== confirmPassword) {
       setMessage('Password and confirm password must match.');
+      setIsSubmitting(false);
       return;
     }
 
     if (!displayName.trim()) {
       setMessage('Display name is required.');
+      setIsSubmitting(false);
       return;
     }
 
     try {
+      setMessage('Creating your account and sending your verification email...');
       const response = await axios.post(buildPath('api/auth/register'), {
         email,
         password,
@@ -85,6 +93,8 @@ function LoginPage() {
       }
       const apiError: string | undefined = error?.response?.data?.error;
       setMessage(apiError || 'Registration failed.');
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -129,7 +139,9 @@ function LoginPage() {
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </label>
 
-            <button className="primary-btn" type="submit">Sign In</button>
+            <button className="primary-btn" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Signing In...' : 'Sign In'}
+            </button>
           </form>
         ) : (
           <form className="auth-form" onSubmit={handleRegister}>
@@ -178,7 +190,9 @@ function LoginPage() {
               />
             </label>
 
-            <button className="primary-btn" type="submit">Create Account</button>
+            <button className="primary-btn" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Creating Account...' : 'Create Account'}
+            </button>
           </form>
         )}
 
