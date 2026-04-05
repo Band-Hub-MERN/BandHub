@@ -103,7 +103,7 @@ function LoginPage() {
           return;
         }
 
-        if (status === 'bounced' || status === 'dropped' || status === 'blocked') {
+        if (status === 'bounced' || status === 'dropped' || status === 'blocked' || status === 'send_failed') {
           setMode('register');
           showRegisterMessage(
             statusMessage

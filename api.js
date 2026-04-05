@@ -9,13 +9,21 @@ const { hashPassword, verifyPassword } = require('./utils/passwordHash.js');
 const { createVerificationFields, validateEmailAddress, sendVerificationEmail } = require('./utils/emailVerification.js');
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const RETRYABLE_UNVERIFIED_STATUSES = new Set([
+    'bounced_invalid',
+    'bounced',
+    'dropped',
+    'blocked',
+    'send_failed'
+]);
 const TERMINAL_EMAIL_DELIVERY_STATUSES = new Set([
     'delivered',
     'verified',
     'bounced',
     'bounced_invalid',
     'dropped',
-    'blocked'
+    'blocked',
+    'send_failed'
 ]);
 const INVALID_EMAIL_REASON_PATTERN = /does not exist|invalid address|invalid mailbox|mailbox unavailable|no such user|user unknown|unknown user|unknown recipient|recipient rejected|address rejected|mailbox not found/i;
 
@@ -105,7 +113,7 @@ exports.setApp = function (app) {
         const normalizedEmail = String(email).toLowerCase().trim();
         const existing = await AccountUser.findOne({ email: normalizedEmail });
         if (existing) {
-            if (!existing.isVerified && existing.emailDeliveryStatus === 'bounced_invalid') {
+            if (!existing.isVerified && RETRYABLE_UNVERIFIED_STATUSES.has(existing.emailDeliveryStatus || '')) {
                 await AccountUser.deleteOne({ _id: existing._id });
             }
             else {
@@ -141,15 +149,19 @@ exports.setApp = function (app) {
 
         await newUser.save();
 
-        try {
-            await sendVerificationEmail(newUser.email, newUser.verificationToken);
-        }
-        catch (error) {
-            console.error('Failed to send verification email during registration:', error);
-            await AccountUser.deleteOne({ _id: newUser._id });
-            res.status(500).json({ error: 'Unable to send verification email. Please try registering again.' });
-            return;
-        }
+        void (async () => {
+            try {
+                await sendVerificationEmail(newUser.email, newUser.verificationToken);
+            }
+            catch (error) {
+                console.error('Failed to send verification email during registration:', error);
+                await AccountUser.findByIdAndUpdate(newUser._id, {
+                    emailDeliveryStatus: 'send_failed',
+                    emailDeliveryMessage: 'We could not send the verification email. Please check the address and try again.',
+                    emailDeliveryUpdatedAt: new Date()
+                });
+            }
+        })();
 
         res.status(201).json({
             message: 'Account created. Please check your email to verify your account before logging in. If you do not receive it soon, double-check the email address and your spam folder.',
