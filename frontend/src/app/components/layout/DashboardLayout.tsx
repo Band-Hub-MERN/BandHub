@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useEffect, useState } from 'react';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import { StarField } from '../ui/StarField';
 import { getIncomingInvites } from '../../api/organization';
 
@@ -52,6 +52,14 @@ export default function DashboardLayout() {
   const handleLogout = () => {
     logout();
     navigate('/');
+  };
+
+  const handleNotificationClick = () => {
+    if (accountType === 'member') {
+      navigate('/invites');
+      return;
+    }
+    toast.info('No notifications yet. You can manage notification preferences in Settings.');
   };
 
   return (
@@ -166,9 +174,15 @@ export default function DashboardLayout() {
                 New Event
               </button>
             )}
-            <button className="relative w-8 h-8 rounded-lg hover:bg-white/[0.06] flex items-center justify-center text-[#8A8A9A] hover:text-[#FAFAFA] transition-all">
+            <button
+              onClick={handleNotificationClick}
+              className="relative w-8 h-8 rounded-lg hover:bg-white/[0.06] flex items-center justify-center text-[#8A8A9A] hover:text-[#FAFAFA] transition-all"
+              aria-label="Open notifications"
+            >
               <Bell className="w-4 h-4" />
-              <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-[#FFC904] rounded-full shadow-[0_0_4px_rgba(255,201,4,0.6)]"></span>
+              {accountType === 'member' && pendingInviteCount > 0 && (
+                <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-[#FFC904] rounded-full shadow-[0_0_4px_rgba(255,201,4,0.6)]"></span>
+              )}
             </button>
           </div>
         </header>
