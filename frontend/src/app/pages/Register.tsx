@@ -5,6 +5,15 @@ import { StarField } from '../components/ui/StarField';
 import { registerRequest } from '../api/auth';
 import { getApiErrorDetails, getApiErrorMessage, hasApiResponse } from '../api/error-handling';
 
+function getPasswordPolicyChecks(value: string) {
+  return {
+    hasMinLength: value.length >= 8,
+    hasUppercase: /[A-Z]/.test(value),
+    hasNumber: /[0-9]/.test(value),
+    hasSpecialSymbol: /[^A-Za-z0-9]/.test(value),
+  };
+}
+
 export default function Register() {
   const navigate = useNavigate();
   const [accountType, setAccountType] = useState<'member' | 'fan'>('member');
@@ -17,6 +26,18 @@ export default function Register() {
   const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const passwordChecks = getPasswordPolicyChecks(password);
+  const passedPolicyChecks = Object.values(passwordChecks).filter(Boolean).length;
+  const isPasswordPolicyValid = passedPolicyChecks === 4;
+  const isConfirmPasswordMatch = password.length > 0 && password === confirmPassword;
+  const isRegisterDisabled = loading || !isPasswordPolicyValid || !isConfirmPasswordMatch;
+  const passwordRequirements = [
+    { label: 'At least 8 characters', met: passwordChecks.hasMinLength },
+    { label: 'One uppercase letter', met: passwordChecks.hasUppercase },
+    { label: 'One number', met: passwordChecks.hasNumber },
+    { label: 'One special symbol', met: passwordChecks.hasSpecialSymbol },
+  ];
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -206,11 +227,31 @@ export default function Register() {
                     <div
                       key={i}
                       className="h-1 flex-1 rounded-full transition-all"
-                      style={{ background: password.length >= i * 2 ? (password.length >= 8 ? '#22C55E' : '#FFC904') : '#2A2A2F' }}
+                      style={{
+                        background: passedPolicyChecks >= i
+                          ? (passedPolicyChecks === 4 ? '#22C55E' : '#FFC904')
+                          : '#2A2A2F'
+                      }}
                     />
                   ))}
                 </div>
               )}
+              <ul className="mt-2 space-y-1">
+                {passwordRequirements.map(requirement => (
+                  <li key={requirement.label} className="flex items-center gap-1.5 text-[11px]">
+                    <span
+                      className={`w-4 h-4 rounded-full flex items-center justify-center border transition-colors ${
+                        requirement.met
+                          ? 'bg-[#22C55E]/15 border-[#22C55E]/40 text-[#22C55E]'
+                          : 'bg-transparent border-white/20 text-[#8A8A9A]'
+                      }`}
+                    >
+                      {requirement.met ? <Check className="w-2.5 h-2.5" /> : <span className="w-1 h-1 rounded-full bg-current" />}
+                    </span>
+                    <span className={requirement.met ? 'text-[#22C55E]' : 'text-[#8A8A9A]'}>{requirement.label}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
 
             <div>
@@ -263,8 +304,8 @@ export default function Register() {
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full bg-[#FFC904] hover:bg-[#FFD84D] disabled:opacity-60 text-[#09090B] py-3 rounded-xl font-bold transition-all text-sm"
+              disabled={isRegisterDisabled}
+              className="w-full bg-[#FFC904] hover:bg-[#FFD84D] disabled:opacity-60 disabled:cursor-not-allowed text-[#09090B] py-3 rounded-xl font-bold transition-all text-sm"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
