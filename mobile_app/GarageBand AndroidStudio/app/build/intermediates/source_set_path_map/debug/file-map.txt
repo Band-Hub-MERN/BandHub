@@ -1,0 +1,53 @@
+com.garageband.app-jetified-lifecycle-viewmodel-savedstate-2.6.2-0 C:\Users\camda\.gradle\caches\transforms-3\02896f98be81ce23da05dee8bc336f9f\transformed\jetified-lifecycle-viewmodel-savedstate-2.6.2\res
+com.garageband.app-coordinatorlayout-1.1.0-1 C:\Users\camda\.gradle\caches\transforms-3\1874ab9204e5dfe0442060593778afa6\transformed\coordinatorlayout-1.1.0\res
+com.garageband.app-jetified-window-1.0.0-2 C:\Users\camda\.gradle\caches\transforms-3\189abf729f722d84e941eb252ed4f743\transformed\jetified-window-1.0.0\res
+com.garageband.app-jetified-lifecycle-livedata-core-ktx-2.6.2-3 C:\Users\camda\.gradle\caches\transforms-3\20d9fd260c358b5309a8f80cd656e496\transformed\jetified-lifecycle-livedata-core-ktx-2.6.2\res
+com.garageband.app-recyclerview-1.3.2-4 C:\Users\camda\.gradle\caches\transforms-3\28f27c8bdd6d071e057c127aa5aa87d3\transformed\recyclerview-1.3.2\res
+com.garageband.app-core-1.12.0-5 C:\Users\camda\.gradle\caches\transforms-3\2b494c583275ef24e0efb5aa9d4fec81\transformed\core-1.12.0\res
+com.garageband.app-jetified-core-ktx-1.12.0-6 C:\Users\camda\.gradle\caches\transforms-3\31e4c24ee2f7a258888b00f0a524b78a\transformed\jetified-core-ktx-1.12.0\res
+com.garageband.app-jetified-appcompat-resources-1.6.1-7 C:\Users\camda\.gradle\caches\transforms-3\40bd1045786c4d0217f42773cdf4bd5a\transformed\jetified-appcompat-resources-1.6.1\res
+com.garageband.app-navigation-common-ktx-2.7.4-8 C:\Users\camda\.gradle\caches\transforms-3\4491cb923b4c28a1f53042a9544ca2a9\transformed\navigation-common-ktx-2.7.4\res
+com.garageband.app-fragment-1.6.2-9 C:\Users\camda\.gradle\caches\transforms-3\49cf488bdcba52c39954aac615b0d8a5\transformed\fragment-1.6.2\res
+com.garageband.app-slidingpanelayout-1.2.0-10 C:\Users\camda\.gradle\caches\transforms-3\4fcafb956f6495602bf27451ee2d8628\transformed\slidingpanelayout-1.2.0\res
+com.garageband.app-constraintlayout-2.1.4-11 C:\Users\camda\.gradle\caches\transforms-3\5107b225688881a4e0b1fbdc9e91d730\transformed\constraintlayout-2.1.4\res
+com.garageband.app-jetified-annotation-experimental-1.3.0-12 C:\Users\camda\.gradle\caches\transforms-3\566256a70d68299512087d85cb6ecf4b\transformed\jetified-annotation-experimental-1.3.0\res
+com.garageband.app-navigation-ui-ktx-2.7.4-13 C:\Users\camda\.gradle\caches\transforms-3\5ef701d5c93a2c8b499c6cb13bc09a52\transformed\navigation-ui-ktx-2.7.4\res
+com.garageband.app-jetified-startup-runtime-1.1.1-14 C:\Users\camda\.gradle\caches\transforms-3\6b14d1876cc9922693eea8be69313a7d\transformed\jetified-startup-runtime-1.1.1\res
+com.garageband.app-jetified-viewpager2-1.1.0-beta02-15 C:\Users\camda\.gradle\caches\transforms-3\6eb17ac0747128d712b973ccd7e90f8d\transformed\jetified-viewpager2-1.1.0-beta02\res
+com.garageband.app-core-runtime-2.2.0-16 C:\Users\camda\.gradle\caches\transforms-3\807c99d85e6954e200350c6dfb100b18\transformed\core-runtime-2.2.0\res
+com.garageband.app-drawerlayout-1.1.1-17 C:\Users\camda\.gradle\caches\transforms-3\85fe92684ff696afd6f5a5ed902125b5\transformed\drawerlayout-1.1.1\res
+com.garageband.app-navigation-runtime-2.7.4-18 C:\Users\camda\.gradle\caches\transforms-3\8eb24359e5c647bd23176868597ca7b0\transformed\navigation-runtime-2.7.4\res
+com.garageband.app-jetified-customview-poolingcontainer-1.0.0-19 C:\Users\camda\.gradle\caches\transforms-3\a5173e5a2418863017407606c8529ae7\transformed\jetified-customview-poolingcontainer-1.0.0\res
+com.garageband.app-jetified-lifecycle-process-2.6.2-20 C:\Users\camda\.gradle\caches\transforms-3\aade1254e467424146af29c64ec77c5a\transformed\jetified-lifecycle-process-2.6.2\res
+com.garageband.app-navigation-ui-2.7.4-21 C:\Users\camda\.gradle\caches\transforms-3\ba02c06ef408c218a18045452ec0a857\transformed\navigation-ui-2.7.4\res
+com.garageband.app-jetified-emoji2-1.2.0-22 C:\Users\camda\.gradle\caches\transforms-3\bf8b03f8adf5c0e5352d7d9f7bb7ac31\transformed\jetified-emoji2-1.2.0\res
+com.garageband.app-navigation-runtime-ktx-2.7.4-23 C:\Users\camda\.gradle\caches\transforms-3\c0970de3aa372d15a491e6c21b76c5b9\transformed\navigation-runtime-ktx-2.7.4\res
+com.garageband.app-appcompat-1.6.1-24 C:\Users\camda\.gradle\caches\transforms-3\c0d5827413f7332a59c12782b1154aec\transformed\appcompat-1.6.1\res
+com.garageband.app-lifecycle-livedata-core-2.6.2-25 C:\Users\camda\.gradle\caches\transforms-3\c10731134aa1cce36ceecaf70e666b10\transformed\lifecycle-livedata-core-2.6.2\res
+com.garageband.app-cardview-1.0.0-26 C:\Users\camda\.gradle\caches\transforms-3\c40ee86028e8e0e250feb2f2a2d4ff9d\transformed\cardview-1.0.0\res
+com.garageband.app-navigation-common-2.7.4-27 C:\Users\camda\.gradle\caches\transforms-3\c45101d936e4005d6e530c9c46401ab4\transformed\navigation-common-2.7.4\res
+com.garageband.app-jetified-activity-1.8.0-28 C:\Users\camda\.gradle\caches\transforms-3\c8ce2630b3d9279b33d00607715665a4\transformed\jetified-activity-1.8.0\res
+com.garageband.app-jetified-activity-ktx-1.8.0-29 C:\Users\camda\.gradle\caches\transforms-3\ce604bcf9c84ab8922316fd755c8ab3f\transformed\jetified-activity-ktx-1.8.0\res
+com.garageband.app-lifecycle-runtime-2.6.2-30 C:\Users\camda\.gradle\caches\transforms-3\cebed5b8b4f9d64f3579e9079a67bf82\transformed\lifecycle-runtime-2.6.2\res
+com.garageband.app-navigation-fragment-ktx-2.7.4-31 C:\Users\camda\.gradle\caches\transforms-3\cff5e779b322b91b9826cf97362ce284\transformed\navigation-fragment-ktx-2.7.4\res
+com.garageband.app-jetified-lifecycle-viewmodel-ktx-2.6.2-32 C:\Users\camda\.gradle\caches\transforms-3\d08de6e086acc41965ed39ea4ffa07eb\transformed\jetified-lifecycle-viewmodel-ktx-2.6.2\res
+com.garageband.app-material-1.10.0-33 C:\Users\camda\.gradle\caches\transforms-3\d12fade48fdb1fd4b42c7fb019d6f503\transformed\material-1.10.0\res
+com.garageband.app-jetified-emoji2-views-helper-1.2.0-34 C:\Users\camda\.gradle\caches\transforms-3\d1887de595990a84386a4bac1e5f0af3\transformed\jetified-emoji2-views-helper-1.2.0\res
+com.garageband.app-navigation-fragment-2.7.4-35 C:\Users\camda\.gradle\caches\transforms-3\d6542e8ccb34d23ea16fb8a30ac37e2c\transformed\navigation-fragment-2.7.4\res
+com.garageband.app-jetified-glide-4.16.0-36 C:\Users\camda\.gradle\caches\transforms-3\db245ff598adbadfaf198bcd457e1090\transformed\jetified-glide-4.16.0\res
+com.garageband.app-lifecycle-viewmodel-2.6.2-37 C:\Users\camda\.gradle\caches\transforms-3\df4b5fb78a324c51d26e2697979d4935\transformed\lifecycle-viewmodel-2.6.2\res
+com.garageband.app-transition-1.4.1-38 C:\Users\camda\.gradle\caches\transforms-3\e24d613f3c457c8a154e5cbf97876dbd\transformed\transition-1.4.1\res
+com.garageband.app-jetified-profileinstaller-1.3.0-39 C:\Users\camda\.gradle\caches\transforms-3\e2c69bcdb0b13b6913ae8eca300f6972\transformed\jetified-profileinstaller-1.3.0\res
+com.garageband.app-jetified-circleimageview-3.1.0-40 C:\Users\camda\.gradle\caches\transforms-3\e4fa7f66a06473c41a92d73252d4c1b6\transformed\jetified-circleimageview-3.1.0\res
+com.garageband.app-jetified-savedstate-1.2.1-41 C:\Users\camda\.gradle\caches\transforms-3\e522710531b73fa2275c9db4c95ab3bc\transformed\jetified-savedstate-1.2.1\res
+com.garageband.app-jetified-fragment-ktx-1.6.2-42 C:\Users\camda\.gradle\caches\transforms-3\e92635e7d8d875dc8d4b15f6766cca3b\transformed\jetified-fragment-ktx-1.6.2\res
+com.garageband.app-jetified-lifecycle-runtime-ktx-2.6.2-43 C:\Users\camda\.gradle\caches\transforms-3\fbfdb244999d5a84de89b52d768f427f\transformed\jetified-lifecycle-runtime-ktx-2.6.2\res
+com.garageband.app-jetified-savedstate-ktx-1.2.1-44 C:\Users\camda\.gradle\caches\transforms-3\fd256a3354b31babd7a34d0cb90d9c36\transformed\jetified-savedstate-ktx-1.2.1\res
+com.garageband.app-lifecycle-livedata-2.6.2-45 C:\Users\camda\.gradle\caches\transforms-3\ff6c5ed570f6df77332dc807a2231a9e\transformed\lifecycle-livedata-2.6.2\res
+com.garageband.app-pngs-46 C:\Users\camda\Downloads\CODING\CEN460\GarageBand AndroidStudio\app\build\generated\res\pngs\debug
+com.garageband.app-resValues-47 C:\Users\camda\Downloads\CODING\CEN460\GarageBand AndroidStudio\app\build\generated\res\resValues\debug
+com.garageband.app-packageDebugResources-48 C:\Users\camda\Downloads\CODING\CEN460\GarageBand AndroidStudio\app\build\intermediates\incremental\debug\packageDebugResources\merged.dir
+com.garageband.app-packageDebugResources-49 C:\Users\camda\Downloads\CODING\CEN460\GarageBand AndroidStudio\app\build\intermediates\incremental\debug\packageDebugResources\stripped.dir
+com.garageband.app-merged_res-50 C:\Users\camda\Downloads\CODING\CEN460\GarageBand AndroidStudio\app\build\intermediates\merged_res\debug
+com.garageband.app-debug-51 C:\Users\camda\Downloads\CODING\CEN460\GarageBand AndroidStudio\app\src\debug\res
+com.garageband.app-main-52 C:\Users\camda\Downloads\CODING\CEN460\GarageBand AndroidStudio\app\src\main\res

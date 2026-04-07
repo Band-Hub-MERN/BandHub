@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#000000</color>
+    <color name="calendarSaturday">#E53935</color>
+    <color name="calendarSunday">#E53935</color>
+    <color name="colorAccent">#7B2FBE</color>
+    <color name="colorAccentLight">#9B59B6</color>
+    <color name="colorBackground">#F5F5F7</color>
+    <color name="colorError">#D32F2F</color>
+    <color name="colorPast">#E53935</color>
+    <color name="colorPrimary">#1A1A2E</color>
+    <color name="colorPrimaryDark">#12122A</color>
+    <color name="colorStar">#FFC107</color>
+    <color name="colorSurface">#FFFFFF</color>
+    <color name="colorSurfaceVariant">#EBEBEB</color>
+    <color name="colorToday">#7B2FBE</color>
+    <color name="colorUpcoming">#7B2FBE</color>
+    <color name="divider">#E0E0E0</color>
+    <color name="text_primary">#1A1A1A</color>
+    <color name="text_secondary">#757575</color>
+    <color name="transparent">#00000000</color>
+    <color name="white">#FFFFFF</color>
+    <string name="app_name">GarageBand</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_tickets">Tickets</string>
+    <style name="CalendarDayHeader">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textSize">10sp</item>
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:paddingBottom">4dp</item>
+    </style>
+    <style name="Divider">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">1dp</item>
+        <item name="android:layout_marginStart">16dp</item>
+        <item name="android:background">@color/divider</item>
+    </style>
+    <style name="Theme.GarageBand" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        <item name="colorSurface">@color/colorSurface</item>
+        <item name="android:colorBackground">@color/colorBackground</item>
+        <item name="android:windowBackground">@color/colorBackground</item>
+        <item name="android:statusBarColor">@color/colorPrimary</item>
+        <item name="android:navigationBarColor">@color/colorSurface</item>
+    </style>
+    <style name="Theme.GarageBand.Splash" parent="Theme.GarageBand">
+        <item name="android:windowBackground">@color/colorPrimary</item>
+        <item name="android:statusBarColor">@color/colorPrimary</item>
+    </style>
+</resources>

@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.garageband.app-mergeDebugResources-48:/values-h320dp-port-v13/values-h320dp-port-v13.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\camda\\.gradle\\caches\\transforms-3\\d12fade48fdb1fd4b42c7fb019d6f503\\transformed\\material-1.10.0\\res\\values-h320dp-port-v13\\values-h320dp-port-v13.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "75",
+                        "endOffsets": "126"
+                    }
+                }
+            ]
+        }
+    ]
+}
