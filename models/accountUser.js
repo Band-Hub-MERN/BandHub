@@ -23,6 +23,10 @@ const AccountUserSchema = new Schema({
     required: true,
     trim: true
   },
+  bio: {
+    type: String,
+    default: ''
+  },
   organizationId: {
     type: Schema.Types.ObjectId,
     ref: 'OrganizationProfiles',
@@ -59,6 +63,12 @@ const AccountUserSchema = new Schema({
   registrationStatusToken: {
     type: String,
     default: null
+  },
+  notificationPrefs: {
+    invites: { type: Boolean, default: true },
+    events: { type: Boolean, default: true },
+    bookings: { type: Boolean, default: true },
+    digest: { type: Boolean, default: false }
   }
 }, {
   timestamps: true,

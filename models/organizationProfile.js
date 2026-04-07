@@ -26,6 +26,18 @@ const OrganizationProfileSchema = new Schema({
     required: true,
     trim: true
   },
+  description: {
+    type: String,
+    default: ''
+  },
+  color: {
+    type: String,
+    default: '#FFC904'
+  },
+  initials: {
+    type: String,
+    default: ''
+  },
   ownerUserId: {
     type: Schema.Types.ObjectId,
     ref: 'AccountUsers',

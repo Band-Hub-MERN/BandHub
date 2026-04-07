@@ -18,6 +18,11 @@ const OrganizationInviteSchema = new Schema({
     ref: 'AccountUsers',
     required: true
   },
+  role: {
+    type: String,
+    enum: ['owner', 'admin', 'member'],
+    default: 'member'
+  },
   status: {
     type: String,
     enum: ['pending', 'accepted', 'expired', 'revoked'],
