@@ -72,7 +72,7 @@ export default function DashboardLayout() {
 
         {/* Logo */}
         <div className="px-5 py-5 border-b border-white/[0.06] relative">
-          <div className="flex items-center gap-2.5">
+          <button onClick={() => navigate('/dashboard')} type="button" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', width: '100%', textAlign: 'left' }} className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
             <div className="w-8 h-8 rounded-lg bg-[#FFC904] flex items-center justify-center flex-shrink-0 shadow-[0_0_12px_rgba(255,201,4,0.35)]">
               <Music2 className="w-4 h-4 text-[#09090B]" strokeWidth={2.5} />
             </div>
@@ -87,7 +87,7 @@ export default function DashboardLayout() {
                 <span className="text-[10px] text-[#FFC904] font-semibold tracking-wider uppercase">UCF</span>
               </div>
             </div>
-          </div>
+          </button>
         </div>
 
         {/* Nav items */}
