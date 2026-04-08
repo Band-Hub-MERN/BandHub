@@ -155,7 +155,7 @@ export default function MemberDashboard() {
         <div className="mb-7">
           <div className="flex items-center justify-between mb-1">
             <div>
-              <p className="text-[#8A8A9A] text-xs font-semibold uppercase tracking-widest mb-1">Monday, April 6 · 2026</p>
+              <p className="text-[#8A8A9A] text-xs font-semibold uppercase tracking-widest mb-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
               <h1
                 className="text-[#FAFAFA] uppercase"
                 style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: '2.25rem', fontWeight: 900, letterSpacing: '0.02em', lineHeight: 1 }}

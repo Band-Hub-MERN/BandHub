@@ -77,7 +77,7 @@ function EventCard({ event, onClick }: { event: GarageEvent; onClick: () => void
           <div className="flex items-center gap-1.5">
             <Clock className="w-3 h-3 text-[#8A8A9A]" />
             <span className="text-[#8A8A9A] text-xs">
-              {Math.round((new Date(event.date).getTime() - new Date('2026-04-06').getTime()) / (1000 * 60 * 60 * 24))}d away
+              {Math.round((new Date(event.date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}d away
             </span>
           </div>
           <span className="text-[#FFC904] text-xs font-semibold">View details →</span>
