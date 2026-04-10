@@ -70,7 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _handleTrack(String eventId) async {
+  Future<void> _handleTrack(String eventId, {GarageEvent? hint}) async {
     final auth = context.read<AuthProvider>();
     if (!auth.isLoggedIn) {
       context.go(AppRoutes.login);
@@ -78,7 +78,11 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     try {
-      await context.read<EventProvider>().toggleAttend(eventId, auth.token!);
+      await context.read<EventProvider>().toggleAttend(
+            eventId,
+            auth.token!,
+            eventHint: hint,
+          );
     } on ApiException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -270,7 +274,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 isAttending: ep.isAttending(event.id),
                 isLoggedIn: auth.isLoggedIn,
                 onTap: () => context.push(AppRoutes.eventDetailPath(event.id)),
-                onTrackTap: () => _handleTrack(event.id),
+                onTrackTap: () => _handleTrack(event.id, hint: event),
               );
             },
           ),
