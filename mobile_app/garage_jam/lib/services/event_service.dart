@@ -32,4 +32,14 @@ class EventService {
         .map((e) => GarageEvent.fromJson(e as Map<String, dynamic>))
         .toList();
   }
+
+  // GET /api/events?date=YYYY-MM-DD — events for a specific date (past or future)
+  static Future<List<GarageEvent>> getEventsByDate(
+      String date, String token) async {
+    final list =
+        await ApiClient.getList('/api/events?date=$date', token: token);
+    return list
+        .map((e) => GarageEvent.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
 }

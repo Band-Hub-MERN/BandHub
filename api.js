@@ -1701,9 +1701,13 @@ exports.setApp = function (app) {
             return;
         }
 
-        const query = authed.user.accountType === 'fan'
-            ? { isPublic: true }
-            : {};
+        const todayIso = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+        const filterDate = sanitizeIsoDate(String(req.query?.date || ''));
+
+        const baseQuery = authed.user.accountType === 'fan' ? { isPublic: true } : {};
+        const query = filterDate
+            ? { ...baseQuery, date: filterDate }
+            : { ...baseQuery, date: { $gte: todayIso } };
 
         const events = await GarageEvent.find(query).sort({ date: 1, startTime: 1 });
         res.status(200).json(events.map((eventRow) => ({
@@ -1721,6 +1725,40 @@ exports.setApp = function (app) {
             category: eventRow.category,
             coverImage: eventRow.coverImage,
             attendees: eventRow.attendees,
+            attendeeIds: (eventRow.attendeeIds || []).map(id => String(id)),
+            isPublic: Boolean(eventRow.isPublic)
+        })));
+    });
+
+    // Must be registered BEFORE /api/events/:id so Express does not treat
+    // the literal string "attending" as an event id parameter.
+    app.get('/api/events/attending', async (req, res) => {
+        const authed = await getAuthedUser(req);
+        if (authed.error) {
+            res.status(authed.status).json({ error: authed.error });
+            return;
+        }
+
+        const events = await GarageEvent.find({
+            attendeeIds: authed.user._id
+        }).sort({ date: 1, startTime: 1 });
+
+        res.status(200).json(events.map((eventRow) => ({
+            id: String(eventRow._id),
+            title: eventRow.title,
+            orgName: eventRow.orgName,
+            orgId: String(eventRow.orgId),
+            orgColor: eventRow.orgColor,
+            garageId: eventRow.garageId,
+            floor: eventRow.floor,
+            date: eventRow.date,
+            startTime: eventRow.startTime,
+            endTime: eventRow.endTime,
+            description: eventRow.description,
+            category: eventRow.category,
+            coverImage: eventRow.coverImage,
+            attendees: eventRow.attendees,
+            attendeeIds: (eventRow.attendeeIds || []).map(id => String(id)),
             isPublic: Boolean(eventRow.isPublic)
         })));
     });
@@ -1763,8 +1801,73 @@ exports.setApp = function (app) {
             category: eventRow.category,
             coverImage: eventRow.coverImage,
             attendees: eventRow.attendees,
+            attendeeIds: (eventRow.attendeeIds || []).map(id => String(id)),
             isPublic: Boolean(eventRow.isPublic)
         });
+    });
+
+    app.post('/api/events/:id/attend', async (req, res) => {
+        const authed = await getAuthedUser(req);
+        if (authed.error) {
+            res.status(authed.status).json({ error: authed.error });
+            return;
+        }
+
+        if (!isValidObjectId(req.params.id)) {
+            validationError(res, 'Invalid event id');
+            return;
+        }
+
+        const eventRow = await GarageEvent.findById(req.params.id);
+        if (!eventRow) {
+            res.status(404).json({ error: 'Event not found' });
+            return;
+        }
+
+        const userId = authed.user._id;
+        const alreadyAttending = eventRow.attendeeIds.some(
+            id => String(id) === String(userId)
+        );
+
+        if (!alreadyAttending) {
+            eventRow.attendeeIds.push(userId);
+            eventRow.attendees = eventRow.attendeeIds.length;
+            await eventRow.save();
+        }
+
+        res.status(200).json({ message: 'Attending' });
+    });
+
+    app.delete('/api/events/:id/attend', async (req, res) => {
+        const authed = await getAuthedUser(req);
+        if (authed.error) {
+            res.status(authed.status).json({ error: authed.error });
+            return;
+        }
+
+        if (!isValidObjectId(req.params.id)) {
+            validationError(res, 'Invalid event id');
+            return;
+        }
+
+        const eventRow = await GarageEvent.findById(req.params.id);
+        if (!eventRow) {
+            res.status(404).json({ error: 'Event not found' });
+            return;
+        }
+
+        const userId = authed.user._id;
+        const beforeLength = eventRow.attendeeIds.length;
+        eventRow.attendeeIds = eventRow.attendeeIds.filter(
+            id => String(id) !== String(userId)
+        );
+
+        if (eventRow.attendeeIds.length !== beforeLength) {
+            eventRow.attendees = eventRow.attendeeIds.length;
+            await eventRow.save();
+        }
+
+        res.status(200).json({ message: 'Unattended' });
     });
 
     app.post('/api/events', async (req, res) => {

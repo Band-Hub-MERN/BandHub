@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:table_calendar/table_calendar.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/event_provider.dart';
+import '../../models/garage_event.dart';
+import '../../services/event_service.dart';
 import '../../widgets/event_card.dart';
 import '../../widgets/garage_filter_chips.dart';
 import '../../theme/colors.dart';
@@ -20,6 +23,12 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   String? _selectedGarage;
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
+
+  // Holds events fetched for a specific past date
+  List<GarageEvent> _dateEvents = [];
+  bool _dateEventsLoading = false;
 
   @override
   void initState() {
@@ -38,10 +47,27 @@ class _HomeScreenState extends State<HomeScreen> {
     await eventProvider.loadAttendingEvents(auth.token!);
   }
 
-  List<dynamic> get _filtered {
-    final events = context.read<EventProvider>().events;
-    if (_selectedGarage == null) return events;
-    return events.where((e) => e.garageId == _selectedGarage).toList();
+  bool _isPastDay(DateTime day) {
+    final today = DateTime.now();
+    return day.isBefore(DateTime(today.year, today.month, today.day));
+  }
+
+  Future<void> _loadDateEvents(DateTime day) async {
+    final auth = context.read<AuthProvider>();
+    if (auth.token == null) return;
+
+    final dateStr =
+        '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+
+    setState(() => _dateEventsLoading = true);
+    try {
+      final events = await EventService.getEventsByDate(dateStr, auth.token!);
+      if (mounted) setState(() => _dateEvents = events);
+    } on ApiException {
+      if (mounted) setState(() => _dateEvents = []);
+    } finally {
+      if (mounted) setState(() => _dateEventsLoading = false);
+    }
   }
 
   Future<void> _handleTrack(String eventId) async {
@@ -62,6 +88,32 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  List<GarageEvent> _eventsForDay(DateTime day, List<GarageEvent> all) {
+    return all.where((e) {
+      try {
+        return isSameDay(DateTime.parse(e.date), day);
+      } catch (_) {
+        return false;
+      }
+    }).toList();
+  }
+
+  List<GarageEvent> _applyFilters(List<GarageEvent> events) {
+    // For past dates use the separately fetched list, not the upcoming feed
+    final source = (_selectedDay != null && _isPastDay(_selectedDay!))
+        ? _dateEvents
+        : events;
+
+    var filtered = source;
+    if (_selectedGarage != null) {
+      filtered = filtered.where((e) => e.garageId == _selectedGarage).toList();
+    }
+    if (_selectedDay != null && !_isPastDay(_selectedDay!)) {
+      filtered = _eventsForDay(_selectedDay!, filtered);
+    }
+    return filtered;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -71,14 +123,17 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
+            Consumer<EventProvider>(
+              builder: (_, ep, __) => _buildCalendar(ep.events),
+            ),
             Consumer<EventProvider>(
               builder: (_, ep, __) => GarageFilterChips(
                 selected: _selectedGarage,
                 onSelected: (g) => setState(() => _selectedGarage = g),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 4),
             Expanded(child: _buildBody()),
           ],
         ),
@@ -94,7 +149,15 @@ class _HomeScreenState extends State<HomeScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('GARAGE JAM', style: TextStyle(color: ucfGold, fontSize: 13, fontWeight: FontWeight.w900, letterSpacing: 2)),
+              const Text(
+                'GARAGE JAM',
+                style: TextStyle(
+                  color: ucfGold,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2,
+                ),
+              ),
               const Text('Upcoming Events', style: headingMedium),
             ],
           ),
@@ -103,15 +166,92 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildCalendar(List<GarageEvent> events) {
+    return TableCalendar<GarageEvent>(
+      firstDay: DateTime.now().subtract(const Duration(days: 365)),
+      lastDay: DateTime.now().add(const Duration(days: 365)),
+      focusedDay: _focusedDay,
+      calendarFormat: CalendarFormat.week,
+      availableCalendarFormats: const {CalendarFormat.week: 'Week'},
+      selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+      eventLoader: (day) => _eventsForDay(day, events),
+      onDaySelected: (selectedDay, focusedDay) {
+        final deselect = isSameDay(_selectedDay, selectedDay);
+        setState(() {
+          _selectedDay = deselect ? null : selectedDay;
+          _focusedDay = focusedDay;
+          if (deselect) _dateEvents = [];
+        });
+        // Fetch from API when tapping a past date
+        if (!deselect && _isPastDay(selectedDay)) {
+          _loadDateEvents(selectedDay);
+        }
+      },
+      onPageChanged: (focusedDay) {
+        setState(() => _focusedDay = focusedDay);
+      },
+      calendarStyle: CalendarStyle(
+        // Today
+        todayDecoration: BoxDecoration(
+          color: ucfGold.withOpacity(0.25),
+          shape: BoxShape.circle,
+        ),
+        todayTextStyle: const TextStyle(
+          color: ucfGold,
+          fontWeight: FontWeight.bold,
+        ),
+        // Selected day
+        selectedDecoration: const BoxDecoration(
+          color: ucfGold,
+          shape: BoxShape.circle,
+        ),
+        selectedTextStyle: const TextStyle(
+          color: ucfBlack,
+          fontWeight: FontWeight.bold,
+        ),
+        // Default days
+        defaultTextStyle: const TextStyle(color: ucfWhite),
+        weekendTextStyle: const TextStyle(color: ucfWhite),
+        outsideDaysVisible: false,
+        // Event dot
+        markerDecoration: const BoxDecoration(
+          color: ucfGold,
+          shape: BoxShape.circle,
+        ),
+        markerSize: 5,
+        markersMaxCount: 1,
+      ),
+      headerStyle: HeaderStyle(
+        formatButtonVisible: false,
+        titleCentered: true,
+        titleTextStyle: labelGold.copyWith(fontSize: 14),
+        leftChevronIcon:
+            const Icon(Icons.chevron_left, color: ucfGold, size: 20),
+        rightChevronIcon:
+            const Icon(Icons.chevron_right, color: ucfGold, size: 20),
+        headerPadding:
+            const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+        decoration: const BoxDecoration(color: Colors.transparent),
+      ),
+      daysOfWeekStyle: const DaysOfWeekStyle(
+        weekdayStyle: TextStyle(color: textSecondary, fontSize: 12),
+        weekendStyle: TextStyle(color: textSecondary, fontSize: 12),
+      ),
+      rowHeight: 44,
+    );
+  }
+
   Widget _buildBody() {
     return Consumer<EventProvider>(
       builder: (context, ep, _) {
-        if (ep.loadState == EventLoadState.loading) return _buildShimmer();
-        if (ep.loadState == EventLoadState.error) return _buildError(ep.errorMessage ?? 'Something went wrong.');
+        if (ep.loadState == EventLoadState.loading || _dateEventsLoading) {
+          return _buildShimmer();
+        }
+        if (ep.loadState == EventLoadState.error) {
+          return _buildError(ep.errorMessage ?? 'Something went wrong.');
+        }
 
-        final filtered = _selectedGarage == null
-            ? ep.events
-            : ep.events.where((e) => e.garageId == _selectedGarage).toList();
+        final filtered = _applyFilters(ep.events);
 
         if (filtered.isEmpty) return _buildEmpty();
 
@@ -177,20 +317,33 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildEmpty() {
+    String message;
+    if (_selectedDay != null) {
+      final d = _selectedDay!;
+      message = 'No events on ${_monthName(d.month)} ${d.day}.';
+    } else if (_selectedGarage != null) {
+      message = 'No events in Garage $_selectedGarage.';
+    } else {
+      message = 'No upcoming events yet.';
+    }
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(Icons.event_busy_outlined, size: 48, color: textSecondary),
           const SizedBox(height: 16),
-          Text(
-            _selectedGarage == null
-                ? 'No upcoming events yet.'
-                : 'No events in Garage $_selectedGarage.',
-            style: bodySecondary,
-          ),
+          Text(message, style: bodySecondary, textAlign: TextAlign.center),
         ],
       ),
     );
+  }
+
+  String _monthName(int month) {
+    const names = [
+      '', 'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return names[month];
   }
 }
