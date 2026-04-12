@@ -90,6 +90,16 @@ export async function verifyEmailToken(token: string): Promise<User> {
   return mapBackendUser(response.data.user);
 }
 
+export async function requestPasswordReset(email: string): Promise<string> {
+  const response = await apiClient.post<{ message: string }>('/api/auth/forgot-password', { email });
+  return response.data.message;
+}
+
+export async function completePasswordReset(token: string, password: string): Promise<string> {
+  const response = await apiClient.post<{ message: string }>('/api/auth/reset-password', { token, password });
+  return response.data.message;
+}
+
 export function logoutRequest(): void {
   clearAccessToken();
 }
