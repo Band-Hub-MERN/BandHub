@@ -15,6 +15,7 @@ import { deleteBooking, getGarageBookings, getMyBookings } from '../api/bookings
 import { getEvents } from '../api/events';
 import { getOrganizations } from '../api/organization';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import { EventCoverImage } from '../components/ui/EventCoverImage';
 
 const GARAGE_STATUS_COLORS = {
   0: { dot: 'bg-[#22C55E]', label: 'Open', text: 'text-[#22C55E]' },
@@ -366,7 +367,13 @@ export default function MemberDashboard() {
                 className="group bg-[#111113] border border-white/[0.06] rounded-2xl overflow-hidden flex hover:border-white/[0.12] transition-all cursor-pointer"
               >
                 <div className="w-20 h-20 flex-shrink-0 overflow-hidden">
-                  <img src={ev.coverImage} alt={ev.title} className="w-full h-full object-cover" />
+                  <EventCoverImage
+                    src={ev.coverImage}
+                    title={ev.title}
+                    category={ev.category}
+                    orgColor={ev.orgColor}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <div className="flex-1 px-4 py-3 min-w-0">
                   <div className="flex items-start justify-between gap-2">

@@ -4,6 +4,7 @@ import { Search, Calendar, MapPin, Users, Filter, X, Plus, Clock } from 'lucide-
 import { GarageEvent, GARAGES, GARAGE_NAMES, FLOOR_NAMES, formatDate, formatTime } from '../data/mockData';
 import { useApp } from '../context/AppContext';
 import { getEvents } from '../api/events';
+import { EventCoverImage } from '../components/ui/EventCoverImage';
 
 const CATEGORY_COLORS: Record<string, string> = {
   Band: '#FFC904',
@@ -25,9 +26,11 @@ function EventCard({ event, onClick }: { event: GarageEvent; onClick: () => void
     >
       {/* Cover image */}
       <div className="relative h-44 overflow-hidden">
-        <img
+        <EventCoverImage
           src={event.coverImage}
-          alt={event.title}
+          title={event.title}
+          category={event.category}
+          orgColor={event.orgColor}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />

@@ -6,6 +6,7 @@ import { GARAGES, GarageId, GARAGE_NAMES, FLOOR_NAMES, CATEGORIES, TIME_LABELS, 
 import { createEvent, getEventById, updateEvent } from '../api/events';
 import { getOrganizations } from '../api/organization';
 import { getApiErrorMessage } from '../api/error-handling';
+import { EventCoverImage } from '../components/ui/EventCoverImage';
 
 export default function EventCreate() {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ export default function EventCreate() {
   const [date, setDate] = useState('2026-04-15');
   const [startTime, setStartTime] = useState('19:00');
   const [endTime, setEndTime] = useState('21:00');
+  const [coverImage, setCoverImage] = useState('');
   const [garage, setGarage] = useState<GarageId>('A');
   const [floor, setFloor] = useState(1);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -58,6 +60,7 @@ export default function EventCreate() {
         setDate(existingEvent.date || '2026-04-15');
         setStartTime(existingEvent.startTime || '19:00');
         setEndTime(existingEvent.endTime || '21:00');
+        setCoverImage(existingEvent.coverImage || '');
         setGarage((existingEvent.garageId as GarageId) || 'A');
         setFloor(Number(existingEvent.floor) || 1);
         setIsPublic(Boolean(existingEvent.isPublic));
@@ -95,6 +98,7 @@ export default function EventCreate() {
         date,
         startTime,
         endTime,
+        coverImage: coverImage.trim(),
         garageId: garage,
         floor,
         isPublic,
@@ -118,6 +122,8 @@ export default function EventCreate() {
       setSubmitting(false);
     }
   };
+
+  const selectedOrganization = organizations.find((org) => org.id === selectedOrgId);
 
   return (
     <div className="p-6 overflow-y-auto h-full">
@@ -145,8 +151,37 @@ export default function EventCreate() {
         <div className="grid grid-cols-[1fr_340px] gap-6 max-w-5xl">
           {/* Left: Main form */}
           <div className="space-y-5">
+            <div className="rounded-2xl border border-white/[0.08] bg-[#111113] overflow-hidden">
+              <div className="h-52 overflow-hidden bg-[#0C0C0E]">
+                <EventCoverImage
+                  src={coverImage}
+                  title={title || 'New Event'}
+                  category={category}
+                  orgColor={selectedOrganization?.color}
+                  alt={title || 'Event cover preview'}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="p-4">
+                <div className="flex items-center gap-2 text-[#FAFAFA] mb-2">
+                  <Image className="w-4 h-4 text-[#FFC904]" />
+                  <label className="text-xs font-semibold uppercase tracking-wider">Cover Image URL</label>
+                </div>
+                <input
+                  type="url"
+                  value={coverImage}
+                  onChange={event => setCoverImage(event.target.value)}
+                  placeholder="https://images.unsplash.com/..."
+                  className="w-full bg-[#1C1C1F] border border-white/[0.08] text-[#FAFAFA] placeholder:text-[#8A8A9A] rounded-xl px-4 py-3 text-sm outline-none focus:border-[#FFC904]/40 transition-colors"
+                />
+                <p className="text-[#8A8A9A] text-xs mt-2">
+                  Paste an image URL, or leave this blank and Garage Jam will use an auto-generated event poster.
+                </p>
+              </div>
+            </div>
+
             {/* Cover image placeholder */}
-            <div className="h-48 rounded-2xl border-2 border-dashed border-white/[0.10] flex flex-col items-center justify-center bg-[#111113] hover:border-[#FFC904]/30 hover:bg-[#FFC904]/[0.02] transition-all cursor-pointer group">
+            <div className="hidden h-48 rounded-2xl border-2 border-dashed border-white/[0.10] flex-col items-center justify-center bg-[#111113] hover:border-[#FFC904]/30 hover:bg-[#FFC904]/[0.02] transition-all cursor-pointer group">
               <Image className="w-8 h-8 text-[#2A2A2F] group-hover:text-[#FFC904]/50 transition-colors mb-3" />
               <p className="text-[#8A8A9A] text-sm font-medium">Upload cover image</p>
               <p className="text-[#8A8A9A] text-xs mt-1">Recommended: 1200×630px</p>

@@ -64,6 +64,14 @@ const AccountUserSchema = new Schema({
     type: String,
     default: null
   },
+  resetPasswordToken: {
+    type: String,
+    default: null
+  },
+  resetPasswordExpiresAt: {
+    type: Date,
+    default: null
+  },
   notificationPrefs: {
     invites: { type: Boolean, default: true },
     events: { type: Boolean, default: true },
