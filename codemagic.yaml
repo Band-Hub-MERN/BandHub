@@ -1,0 +1,31 @@
+workflows:
+  ios-sideload:
+    name: iOS Sideload Build
+    max_build_duration: 60
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      vars:
+        FLUTTER_PROJECT: mobile_app/garage_jam
+        API_BASE_URL: http://adamdisanti.xyz
+    scripts:
+      - name: Create .env file
+        script: |
+          echo "API_BASE_URL=$API_BASE_URL" > $FLUTTER_PROJECT/.env
+      - name: Get Flutter packages
+        script: |
+          cd $FLUTTER_PROJECT
+          flutter pub get
+      - name: Build iOS (no code signing)
+        script: |
+          cd $FLUTTER_PROJECT
+          flutter build ios --release --no-codesign
+      - name: Package unsigned IPA
+        script: |
+          cd $FLUTTER_PROJECT/build/ios/iphoneos
+          mkdir -p Payload
+          cp -r Runner.app Payload/
+          zip -r GarageJam.ipa Payload
+    artifacts:
+      - mobile_app/garage_jam/build/ios/iphoneos/GarageJam.ipa
