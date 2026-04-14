@@ -129,11 +129,6 @@ export default function Login() {
               </div>
             </div>
 
-            <label className="flex items-center gap-2.5 cursor-pointer">
-              <input type="checkbox" className="w-4 h-4 rounded border-white/20 bg-[#1C1C1F] accent-[#FFC904]" />
-              <span className="text-[#8A8A9A] text-sm">Remember me for 30 days</span>
-            </label>
-
             <button
               type="submit"
               disabled={loading}
