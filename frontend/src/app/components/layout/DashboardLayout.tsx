@@ -1,7 +1,7 @@
 import { Outlet, NavLink, useNavigate } from 'react-router';
 import {
   LayoutDashboard, Building2, Users, Mail, Calendar,
-  Settings, LogOut, Bell, Search, Music2, Zap
+  Settings, LogOut, Bell, Music2, Zap
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useEffect, useState } from 'react';
@@ -21,7 +21,6 @@ const navItems = [
 export default function DashboardLayout() {
   const { user, logout, accountType, isLoggedIn } = useApp();
   const navigate = useNavigate();
-  const [searchFocused, setSearchFocused] = useState(false);
   const [pendingInviteCount, setPendingInviteCount] = useState(0);
 
   useEffect(() => {
@@ -152,17 +151,6 @@ export default function DashboardLayout() {
 
         {/* Header */}
         <header className="h-14 border-b border-white/[0.06] flex items-center px-6 gap-4 bg-[#09090B]/80 backdrop-blur-sm flex-shrink-0 relative z-10">
-          <div className={`flex items-center gap-2 flex-1 max-w-xs bg-[#1C1C1F] rounded-lg px-3 py-2 border transition-all ${searchFocused ? 'border-[#FFC904]/40' : 'border-transparent'}`}>
-            <Search className="w-3.5 h-3.5 text-[#8A8A9A]" />
-            <input
-              type="text"
-              placeholder="Search garages, events, orgs..."
-              className="bg-transparent text-[#FAFAFA] placeholder:text-[#8A8A9A] outline-none flex-1"
-              style={{ fontSize: '12px' }}
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setSearchFocused(false)}
-            />
-          </div>
           <div className="flex items-center gap-2 ml-auto">
             {accountType === 'member' && (
               <button
