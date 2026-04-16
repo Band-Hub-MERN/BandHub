@@ -4,6 +4,7 @@ const sgMail = require('@sendgrid/mail');
 const nodemailer = require('nodemailer');
 
 const VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
+const RESET_PASSWORD_TTL_MS = 60 * 60 * 1000;
 const SENDGRID_EMAIL_VALIDATION_URL = 'https://api.sendgrid.com/v3/validations/email';
 const RESERVED_TEST_DOMAINS = new Set([
   'example.com',
@@ -158,10 +159,22 @@ function buildVerificationUrl(token) {
   return `${baseUrl}/verify-email?token=${encodeURIComponent(token)}`;
 }
 
+function buildResetPasswordUrl(token) {
+  const baseUrl = getBaseUrl().replace(/\/+$/, '');
+  return `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
+}
+
 function createVerificationFields() {
   return {
     verificationToken: crypto.randomBytes(32).toString('hex'),
     verificationExpiresAt: new Date(Date.now() + VERIFICATION_TTL_MS)
+  };
+}
+
+function createPasswordResetFields() {
+  return {
+    resetPasswordToken: crypto.randomBytes(32).toString('hex'),
+    resetPasswordExpiresAt: new Date(Date.now() + RESET_PASSWORD_TTL_MS)
   };
 }
 
@@ -429,10 +442,62 @@ async function sendVerificationEmail(email, token) {
   return { verificationUrl, delivery: 'email' };
 }
 
+async function sendPasswordResetEmail(email, token) {
+  const resetPasswordUrl = buildResetPasswordUrl(token);
+  const sendGridConfig = getSendGridConfig();
+  const mailConfig = getMailConfig();
+  const transporter = sendGridConfig ? null : await getTransporter();
+
+  if (sendGridConfig) {
+    configureSendGrid(sendGridConfig);
+
+    await sgMail.send({
+      to: email,
+      from: getSendGridFrom(sendGridConfig),
+      subject: 'Reset your Garage Jam password',
+      text: `You requested a Garage Jam password reset.\n\nOpen this link to choose a new password:\n${resetPasswordUrl}\n\nThis link expires in 1 hour. If you did not request this, you can ignore this email.`,
+      html: [
+        '<p>You requested a <strong>Garage Jam</strong> password reset.</p>',
+        `<p>Open this link to choose a new password:</p><p><a href="${resetPasswordUrl}">${resetPasswordUrl}</a></p>`,
+        '<p>This link expires in 1 hour. If you did not request this, you can ignore this email.</p>'
+      ].join('')
+    });
+
+    console.log(`[password reset] Sent password reset email to ${email} via SendGrid`);
+    return { resetPasswordUrl, delivery: 'sendgrid' };
+  }
+
+  if (!mailConfig || !transporter) {
+    console.log(`[password reset] Send password reset email to ${email}`);
+    console.log(`[password reset] Reset link: ${resetPasswordUrl}`);
+    console.log('[password reset] SMTP is not configured, so the link was logged instead of emailed.');
+    return { resetPasswordUrl, delivery: 'logged' };
+  }
+
+  await transporter.sendMail({
+    from: mailConfig.from,
+    to: email,
+    subject: 'Reset your Garage Jam password',
+    text: `You requested a Garage Jam password reset.\n\nOpen this link to choose a new password:\n${resetPasswordUrl}\n\nThis link expires in 1 hour. If you did not request this, you can ignore this email.`,
+    html: [
+      '<p>You requested a <strong>Garage Jam</strong> password reset.</p>',
+      `<p>Open this link to choose a new password:</p><p><a href="${resetPasswordUrl}">${resetPasswordUrl}</a></p>`,
+      '<p>This link expires in 1 hour. If you did not request this, you can ignore this email.</p>'
+    ].join('')
+  });
+
+  console.log(`[password reset] Sent password reset email to ${email}`);
+  return { resetPasswordUrl, delivery: 'email' };
+}
+
 module.exports = {
   createVerificationFields,
+  createPasswordResetFields,
   validateEmailAddress,
   sendVerificationEmail,
+  sendPasswordResetEmail,
   buildVerificationUrl,
-  VERIFICATION_TTL_MS
+  buildResetPasswordUrl,
+  VERIFICATION_TTL_MS,
+  RESET_PASSWORD_TTL_MS
 };

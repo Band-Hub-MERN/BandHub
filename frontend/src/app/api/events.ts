@@ -48,3 +48,10 @@ export async function updateEvent(id: string, payload: Partial<GarageEvent>): Pr
 export async function deleteEvent(id: string): Promise<void> {
   await apiClient.delete(`/api/events/${encodeURIComponent(id)}`);
 }
+
+export async function rsvpToEvent(id: string): Promise<{ attendees: number; isGoing: boolean; alreadyGoing: boolean }> {
+  const response = await apiClient.post<{ attendees: number; isGoing: boolean; alreadyGoing: boolean }>(
+    `/api/events/${encodeURIComponent(id)}/rsvp`,
+  );
+  return response.data;
+}

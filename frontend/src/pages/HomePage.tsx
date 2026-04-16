@@ -310,7 +310,6 @@ function HomePage() {
 
       <section className="dashboard-main">
         <header className="dashboard-topbar">
-          <input className="dashboard-search" placeholder="Search garages, events, invites..." />
           <button className="secondary-btn" onClick={handleLogout} type="button">
             Logout
           </button>

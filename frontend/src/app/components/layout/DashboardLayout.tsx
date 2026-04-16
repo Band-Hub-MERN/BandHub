@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useEffect, useState } from 'react';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import { StarField } from '../ui/StarField';
 import { getIncomingInvites } from '../../api/organization';
 
@@ -57,6 +57,14 @@ export default function DashboardLayout() {
     navigate('/');
   };
 
+  const handleNotificationClick = () => {
+    if (accountType === 'member') {
+      navigate('/invites');
+      return;
+    }
+    toast.info('No notifications yet. You can manage notification preferences in Settings.');
+  };
+
   return (
     <div className="flex h-screen bg-[#09090B] overflow-hidden">
       {/* Sidebar */}
@@ -67,7 +75,7 @@ export default function DashboardLayout() {
 
         {/* Logo */}
         <div className="px-5 py-5 border-b border-white/[0.06] relative">
-          <div className="flex items-center gap-2.5">
+          <button onClick={() => navigate('/dashboard')} type="button" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', width: '100%', textAlign: 'left' }} className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
             <div className="w-8 h-8 rounded-lg bg-[#FFC904] flex items-center justify-center flex-shrink-0 shadow-[0_0_12px_rgba(255,201,4,0.35)]">
               <Music2 className="w-4 h-4 text-[#09090B]" strokeWidth={2.5} />
             </div>
@@ -82,7 +90,7 @@ export default function DashboardLayout() {
                 <span className="text-[10px] text-[#FFC904] font-semibold tracking-wider uppercase">UCF</span>
               </div>
             </div>
-          </div>
+          </button>
         </div>
 
         {/* Nav items */}
@@ -165,11 +173,14 @@ export default function DashboardLayout() {
               </button>
             )}
             <button
-              onClick={() => navigate('/invites')}
+              onClick={handleNotificationClick}
               className="relative w-8 h-8 rounded-lg hover:bg-white/[0.06] flex items-center justify-center text-[#8A8A9A] hover:text-[#FAFAFA] transition-all"
+              aria-label="Open notifications"
             >
               <Bell className="w-4 h-4" />
-              <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-[#FFC904] rounded-full shadow-[0_0_4px_rgba(255,201,4,0.6)]"></span>
+              {accountType === 'member' && pendingInviteCount > 0 && (
+                <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-[#FFC904] rounded-full shadow-[0_0_4px_rgba(255,201,4,0.6)]"></span>
+              )}
             </button>
           </div>
         </header>

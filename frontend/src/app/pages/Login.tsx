@@ -103,7 +103,13 @@ export default function Login() {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="text-[#FAFAFA] text-xs font-semibold uppercase tracking-wider">Password</label>
-                <button type="button" className="text-[#FFC904] text-xs hover:underline">Forgot password?</button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/forgot-password')}
+                  className="text-[#FFC904] text-xs hover:underline"
+                >
+                  Forgot password?
+                </button>
               </div>
               <div className="relative">
                 <input
@@ -122,11 +128,6 @@ export default function Login() {
                 </button>
               </div>
             </div>
-
-            <label className="flex items-center gap-2.5 cursor-pointer">
-              <input type="checkbox" className="w-4 h-4 rounded border-white/20 bg-[#1C1C1F] accent-[#FFC904]" />
-              <span className="text-[#8A8A9A] text-sm">Remember me for 30 days</span>
-            </label>
 
             <button
               type="submit"
