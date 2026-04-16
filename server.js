@@ -1,11 +1,18 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
+const fs = require('fs');
 const mongoose = require('mongoose');
+const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 5001;
 app.use(cors());
 app.use(express.json());
+
+const uploadRoot = path.join(__dirname, 'uploads');
+const eventUploadDir = path.join(uploadRoot, 'events');
+fs.mkdirSync(eventUploadDir, { recursive: true });
+app.use('/api/uploads', express.static(uploadRoot));
 
 /* MongoDB connection stuff. You should have your own connection string in a real app, 
  * and you should not commit that string to GitHub. 

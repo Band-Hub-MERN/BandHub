@@ -1,6 +1,9 @@
 require('express');
 const crypto = require('crypto');
+const fs = require('fs');
 const mongoose = require('mongoose');
+const multer = require('multer');
+const path = require('path');
 const AccountUser = require('./models/accountUser.js');
 const OrganizationProfile = require('./models/organizationProfile.js');
 const OrganizationInvite = require('./models/organizationInvite.js');
@@ -41,6 +44,41 @@ const GARAGE_DEFAULT_ORG_COLOR = '#FFC904';
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const EMAIL_BASIC_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HEX_COLOR_PATTERN = /^#([0-9A-Fa-f]{6})$/;
+const EVENT_IMAGE_UPLOAD_DIR = path.join(__dirname, 'uploads', 'events');
+
+fs.mkdirSync(EVENT_IMAGE_UPLOAD_DIR, { recursive: true });
+
+const eventImageUpload = multer({
+    storage: multer.diskStorage({
+        destination: (_req, _file, callback) => {
+            callback(null, EVENT_IMAGE_UPLOAD_DIR);
+        },
+        filename: (_req, file, callback) => {
+            const ext = path.extname(file.originalname || '').toLowerCase();
+            const safeExt = ext || '.jpg';
+            callback(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${safeExt}`);
+        }
+    }),
+    limits: {
+        fileSize: 5 * 1024 * 1024,
+    },
+    fileFilter: (_req, file, callback) => {
+        if (!file.mimetype || !file.mimetype.startsWith('image/')) {
+            callback(new Error('Only image files are allowed'));
+            return;
+        }
+
+        callback(null, true);
+    }
+});
+
+function getPublicBaseUrl(req) {
+    const forwardedProto = String(req.headers?.['x-forwarded-proto'] || '').split(',')[0].trim();
+    const protocol = forwardedProto || req.protocol || 'http';
+    const host = req.get('host');
+    return host ? `${protocol}://${host}` : '';
+}
+
 const GENERIC_PASSWORD_RESET_MESSAGE = 'If an account with that email exists, a password reset link has been sent.';
 
 function validationError(res, error, details = []) {
@@ -144,6 +182,36 @@ function timeStringToMinutes(timeValue) {
     }
 
     return hours * 60 + minutes;
+}
+
+function getLocalDateKey(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function getLocalTimeKey(date = new Date()) {
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+}
+
+async function cleanupExpiredReservations(now = new Date()) {
+    const todayKey = getLocalDateKey(now);
+    const timeKey = getLocalTimeKey(now);
+
+    const expirationFilter = {
+        $or: [
+            { date: { $lt: todayKey } },
+            { date: todayKey, endTime: { $lte: timeKey } },
+        ]
+    };
+
+    await Promise.all([
+        Booking.deleteMany(expirationFilter),
+        GarageEvent.deleteMany(expirationFilter),
+    ]);
 }
 
 function isValidTimeValue(timeValue) {
@@ -366,6 +434,37 @@ function clearPasswordResetFields(user) {
 }
 
 exports.setApp = function (app) {
+    app.post('/api/uploads/event-image', async (req, res) => {
+        const authed = await getAuthedUser(req);
+        if (authed.error) {
+            res.status(authed.status).json({ error: authed.error });
+            return;
+        }
+
+        if (authed.user.accountType !== 'member') {
+            res.status(403).json({ error: 'Only members can upload event images' });
+            return;
+        }
+
+        eventImageUpload.single('image')(req, res, (error) => {
+            if (error) {
+                res.status(400).json({ error: error.message || 'Image upload failed' });
+                return;
+            }
+
+            if (!req.file) {
+                res.status(400).json({ error: 'No image file provided' });
+                return;
+            }
+
+            const publicBaseUrl = getPublicBaseUrl(req);
+            const imagePath = `/api/uploads/events/${encodeURIComponent(req.file.filename)}`;
+            res.status(201).json({
+                imageUrl: publicBaseUrl ? `${publicBaseUrl}${imagePath}` : imagePath
+            });
+        });
+    });
+
     app.post('/api/auth/register', async (req, res) => {
         const allowedKeys = new Set(['email', 'password', 'displayName', 'accountType', 'memberRoleLabel']);
         if (!hasOnlyAllowedKeys(req.body, allowedKeys)) {
@@ -1568,6 +1667,8 @@ exports.setApp = function (app) {
     });
 
     app.get('/api/bookings', async (req, res) => {
+        await cleanupExpiredReservations();
+
         const authed = await getAuthedUser(req);
         if (authed.error) {
             res.status(authed.status).json({ error: authed.error });
@@ -1619,6 +1720,8 @@ exports.setApp = function (app) {
     });
 
     app.get('/api/bookings/mine', async (req, res) => {
+        await cleanupExpiredReservations();
+
         const authed = await getAuthedUser(req);
         if (authed.error) {
             res.status(authed.status).json({ error: authed.error });
@@ -1786,6 +1889,8 @@ exports.setApp = function (app) {
     });
 
     app.get('/api/events', async (req, res) => {
+        await cleanupExpiredReservations();
+
         const authed = await getAuthedUser(req);
         if (authed.error) {
             res.status(authed.status).json({ error: authed.error });
@@ -1826,6 +1931,8 @@ exports.setApp = function (app) {
     });
 
     app.get('/api/events/:id', async (req, res) => {
+        await cleanupExpiredReservations();
+
         const authed = await getAuthedUser(req);
         if (authed.error) {
             res.status(authed.status).json({ error: authed.error });

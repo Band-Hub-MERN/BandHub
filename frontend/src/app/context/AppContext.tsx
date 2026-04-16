@@ -7,6 +7,7 @@ interface AppContextValue {
   user: User | null;
   accountType: AccountType | null;
   isLoggedIn: boolean;
+  isAuthLoading: boolean;
   selectedGarage: string | null;
   setSelectedGarage: (g: string | null) => void;
   login: (type: AccountType) => void;
@@ -17,7 +18,8 @@ const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(Boolean(getAccessToken()));
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [selectedGarage, setSelectedGarage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -25,10 +27,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!token) {
       setUser(null);
       setIsLoggedIn(false);
+      setIsAuthLoading(false);
       return;
     }
-
-    setIsLoggedIn(true);
 
     void (async () => {
       try {
@@ -39,11 +40,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         logoutRequest();
         setUser(null);
         setIsLoggedIn(false);
+      } finally {
+        setIsAuthLoading(false);
       }
     })();
   }, []);
 
   const login = (_type: AccountType) => {
+    setIsAuthLoading(true);
     setIsLoggedIn(true);
     void (async () => {
       try {
@@ -54,6 +58,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         logoutRequest();
         setUser(null);
         setIsLoggedIn(false);
+      } finally {
+        setIsAuthLoading(false);
       }
     })();
   };
@@ -62,6 +68,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     logoutRequest();
     setUser(null);
     setIsLoggedIn(false);
+    setIsAuthLoading(false);
   };
 
   return (
@@ -69,6 +76,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       user,
       accountType: user?.accountType ?? null,
       isLoggedIn,
+      isAuthLoading,
       selectedGarage,
       setSelectedGarage,
       login,

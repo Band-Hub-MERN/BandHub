@@ -4,6 +4,7 @@ import { Search, Calendar, MapPin, Users, Filter, X, Plus, Clock } from 'lucide-
 import { GarageEvent, GARAGES, GARAGE_NAMES, FLOOR_NAMES, formatDate, formatTime } from '../data/mockData';
 import { useApp } from '../context/AppContext';
 import { getEvents } from '../api/events';
+import { getOrganizations } from '../api/organization';
 import { EventCoverImage } from '../components/ui/EventCoverImage';
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -16,6 +17,14 @@ const CATEGORY_COLORS: Record<string, string> = {
   Poetry: '#14B8A6',
   Other: '#8A8A9A',
 };
+
+function daysUntil(dateValue: string): number {
+  const today = new Date();
+  const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  const eventDate = new Date(`${dateValue}T00:00:00.000Z`);
+  const eventUtc = Date.UTC(eventDate.getUTCFullYear(), eventDate.getUTCMonth(), eventDate.getUTCDate());
+  return Math.round((eventUtc - todayUtc) / (1000 * 60 * 60 * 24));
+}
 
 function EventCard({ event, onClick }: { event: GarageEvent; onClick: () => void }) {
   const catColor = CATEGORY_COLORS[event.category] || '#8A8A9A';
@@ -80,7 +89,7 @@ function EventCard({ event, onClick }: { event: GarageEvent; onClick: () => void
           <div className="flex items-center gap-1.5">
             <Clock className="w-3 h-3 text-[#8A8A9A]" />
             <span className="text-[#8A8A9A] text-xs">
-              {Math.round((new Date(event.date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}d away
+              {daysUntil(event.date)}d away
             </span>
           </div>
           <span className="text-[#FFC904] text-xs font-semibold">View details →</span>
@@ -94,6 +103,8 @@ export default function EventsFeed() {
   const navigate = useNavigate();
   const { accountType } = useApp();
   const [events, setEvents] = useState<GarageEvent[]>([]);
+  const [viewerOrgIds, setViewerOrgIds] = useState<string[]>([]);
+  const [eventScope, setEventScope] = useState<'all' | 'mine'>('all');
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedGarage, setSelectedGarage] = useState<string | null>(null);
@@ -103,13 +114,25 @@ export default function EventsFeed() {
   useEffect(() => {
     void (async () => {
       setLoading(true);
-      const eventRows = await getEvents();
-      setEvents(eventRows);
-      setLoading(false);
-    })();
-  }, []);
+      try {
+        const [eventRows, organizations] = await Promise.all([
+          getEvents(),
+          accountType === 'member' ? getOrganizations() : Promise.resolve([]),
+        ]);
 
-  const filtered = events.filter(ev => {
+        setEvents(eventRows);
+        setViewerOrgIds(organizations.map((organization) => organization.id));
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [accountType]);
+
+  const visibleEvents = eventScope === 'mine'
+    ? events.filter((eventItem) => viewerOrgIds.includes(eventItem.orgId))
+    : events;
+
+  const filtered = visibleEvents.filter(ev => {
     const matchSearch = !search || ev.title.toLowerCase().includes(search.toLowerCase()) ||
       ev.orgName.toLowerCase().includes(search.toLowerCase());
     const matchGarage = !selectedGarage || ev.garageId === selectedGarage;
@@ -142,13 +165,35 @@ export default function EventsFeed() {
           </p>
         </div>
         {accountType === 'member' && (
-          <button
-            onClick={() => navigate('/events/create')}
-            className="flex items-center gap-2 bg-[#FFC904] hover:bg-[#FFD84D] text-[#09090B] px-4 py-2.5 rounded-xl font-bold text-sm transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            Post Event
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setEventScope('mine')}
+              className={`px-3 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                eventScope === 'mine'
+                  ? 'bg-[#FFC904]/10 border-[#FFC904]/40 text-[#FFC904]'
+                  : 'border-white/[0.08] text-[#8A8A9A] hover:text-[#FAFAFA] hover:border-white/[0.15]'
+              }`}
+            >
+              My Events
+            </button>
+            <button
+              onClick={() => setEventScope('all')}
+              className={`px-3 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                eventScope === 'all'
+                  ? 'bg-[#FFC904]/10 border-[#FFC904]/40 text-[#FFC904]'
+                  : 'border-white/[0.08] text-[#8A8A9A] hover:text-[#FAFAFA] hover:border-white/[0.15]'
+              }`}
+            >
+              All Events
+            </button>
+            <button
+              onClick={() => navigate('/events/create')}
+              className="flex items-center gap-2 bg-[#FFC904] hover:bg-[#FFD84D] text-[#09090B] px-4 py-2.5 rounded-xl font-bold text-sm transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              Book Event
+            </button>
+          </div>
         )}
       </div>
 

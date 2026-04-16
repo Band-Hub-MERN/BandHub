@@ -387,7 +387,7 @@ function OrgManagementView({
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-[#FAFAFA] font-bold text-sm">Members ({members.length})</h3>
             </div>
-            <div className="bg-[#111113] border border-white/[0.06] rounded-2xl overflow-hidden">
+            <div className="bg-[#111113] border border-white/[0.06] rounded-2xl overflow-visible">
               {members.map((member, i) => {
                 const roleConf = ROLE_CONFIG[member.role];
                 const RoleIcon = roleConf.icon;
@@ -428,7 +428,7 @@ function OrgManagementView({
                             <MoreHorizontal className="w-4 h-4" />
                           </button>
                           {openMenuId === member.id && (
-                            <div className="absolute right-0 top-8 bg-[#1C1C1F] border border-white/[0.10] rounded-xl p-1.5 z-10 w-44 shadow-xl">
+                            <div className="absolute right-0 top-8 bg-[#1C1C1F] border border-white/[0.10] rounded-xl p-1.5 z-30 w-44 shadow-xl">
                               {member.role !== "admin" && (
                                 <button
                                   onClick={() => handleRoleChange(member.id, "admin")}

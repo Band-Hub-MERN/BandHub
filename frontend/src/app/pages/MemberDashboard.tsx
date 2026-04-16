@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
   Building2, Users, Calendar, Clock, ChevronRight, Plus,
@@ -39,7 +39,11 @@ export default function MemberDashboard() {
   const [garageDayBookings, setGarageDayBookings] = useState<Booking[]>([]);
   const [garageOccupancyMap, setGarageOccupancyMap] = useState<Record<string, Record<number, number>>>({});
   const [bookingToCancelId, setBookingToCancelId] = useState<string | null>(null);
-  const activeDate = '2026-04-07';
+  const activeDate = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const todayLabel = useMemo(
+    () => new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' }),
+    [],
+  );
 
   const isFan = accountType === 'fan';
 
@@ -68,7 +72,7 @@ export default function MemberDashboard() {
       setUpcomingEvents(eventsResponse.slice(0, 3));
       setOrganizations(orgsResponse);
     })();
-  }, []);
+  }, [activeDate]);
 
   useEffect(() => {
     void (async () => {
@@ -85,7 +89,7 @@ export default function MemberDashboard() {
 
       setGarageOccupancyMap(Object.fromEntries(occupancyEntries));
     })();
-  }, []);
+  }, [activeDate]);
 
   useEffect(() => {
     if (!selectedGarage) {
@@ -107,7 +111,7 @@ export default function MemberDashboard() {
         [selectedGarage]: occupancy,
       }));
     })();
-  }, [selectedGarage]);
+  }, [activeDate, selectedGarage]);
 
   const selectedOcc = selectedGarage ? garageOccupancyMap[selectedGarage] || { 1: 0, 2: 0, 3: 0, 4: 0 } : null;
 
@@ -156,7 +160,7 @@ export default function MemberDashboard() {
         <div className="mb-7">
           <div className="flex items-center justify-between mb-1">
             <div>
-              <p className="text-[#8A8A9A] text-xs font-semibold uppercase tracking-widest mb-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+              <p className="text-[#8A8A9A] text-xs font-semibold uppercase tracking-widest mb-1">{todayLabel}</p>
               <h1
                 className="text-[#FAFAFA] uppercase"
                 style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: '2.25rem', fontWeight: 900, letterSpacing: '0.02em', lineHeight: 1 }}

@@ -19,11 +19,15 @@ const navItems = [
 ];
 
 export default function DashboardLayout() {
-  const { user, logout, accountType, isLoggedIn } = useApp();
+  const { user, logout, accountType, isLoggedIn, isAuthLoading } = useApp();
   const navigate = useNavigate();
   const [pendingInviteCount, setPendingInviteCount] = useState(0);
 
   useEffect(() => {
+    if (isAuthLoading) {
+      return;
+    }
+
     if (!isLoggedIn) {
       navigate('/login');
       return;
@@ -42,9 +46,9 @@ export default function DashboardLayout() {
         setPendingInviteCount(0);
       }
     })();
-  }, [accountType, isLoggedIn, navigate]);
+  }, [accountType, isAuthLoading, isLoggedIn, navigate]);
 
-  if (!isLoggedIn) {
+  if (isAuthLoading || !isLoggedIn) {
     return null;
   }
 
@@ -126,7 +130,10 @@ export default function DashboardLayout() {
 
         {/* User section */}
         <div className="px-3 pb-4 border-t border-white/[0.06] pt-3 relative">
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/[0.04] cursor-pointer transition-all group">
+          <div
+            onClick={() => navigate('/settings')}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/[0.04] cursor-pointer transition-all group"
+          >
             <div className="w-7 h-7 rounded-full bg-[#FFC904] flex items-center justify-center flex-shrink-0 shadow-[0_0_8px_rgba(255,201,4,0.3)]">
               <span className="text-[#09090B] font-bold" style={{ fontSize: '10px' }}>{user?.avatar}</span>
             </div>
@@ -135,7 +142,10 @@ export default function DashboardLayout() {
               <p className="text-[#8A8A9A] truncate" style={{ fontSize: '10px' }}>{user?.email}</p>
             </div>
             <button
-              onClick={handleLogout}
+              onClick={(event) => {
+                event.stopPropagation();
+                handleLogout();
+              }}
               className="opacity-0 group-hover:opacity-100 transition-opacity text-[#8A8A9A] hover:text-[#EF4444]"
             >
               <LogOut className="w-3.5 h-3.5" />

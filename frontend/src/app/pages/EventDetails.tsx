@@ -8,6 +8,7 @@ import { deleteEvent, getEventById, getEvents, rsvpToEvent } from '../api/events
 import type { GarageEvent } from '../data/mockData';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { getApiErrorMessage } from '../api/error-handling';
+import { getOrganizations } from '../api/organization';
 import { EventCoverImage } from '../components/ui/EventCoverImage';
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -22,6 +23,7 @@ export default function EventDetails() {
   const { accountType } = useApp();
   const [event, setEvent] = useState<GarageEvent | null>(null);
   const [relatedEvents, setRelatedEvents] = useState<GarageEvent[]>([]);
+  const [viewerOrgIds, setViewerOrgIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [rsvpSubmitting, setRsvpSubmitting] = useState(false);
@@ -35,12 +37,14 @@ export default function EventDetails() {
     void (async () => {
       setLoading(true);
       try {
-        const [eventDetails, allEvents] = await Promise.all([
+        const [eventDetails, allEvents, myOrganizations] = await Promise.all([
           getEventById(id),
           getEvents(),
+          getOrganizations(),
         ]);
 
         setEvent(eventDetails);
+        setViewerOrgIds(myOrganizations.map((organization) => organization.id));
         setRelatedEvents(
           allEvents
             .filter((eventItem) => eventItem.id !== id && eventDetails && eventItem.category === eventDetails.category)
@@ -48,6 +52,7 @@ export default function EventDetails() {
         );
       } catch {
         setEvent(null);
+        setViewerOrgIds([]);
         setRelatedEvents([]);
       } finally {
         setLoading(false);
@@ -77,6 +82,25 @@ export default function EventDetails() {
   }
 
   const catColor = CATEGORY_COLORS[event.category] || '#8A8A9A';
+  const canManageEvent = accountType === 'member' && viewerOrgIds.includes(event.orgId);
+
+  const handleEditEvent = () => {
+    if (!canManageEvent) {
+      toast.error('Cannot edit event outside your organization');
+      return;
+    }
+
+    navigate(`/events/${event.id}/edit`);
+  };
+
+  const handleDeleteEvent = () => {
+    if (!canManageEvent) {
+      toast.error('Cannot delete event outside your organization');
+      return;
+    }
+
+    setConfirmDeleteOpen(true);
+  };
 
   const handleRsvp = async () => {
     if (!event?.id || rsvpSubmitting) {
@@ -314,14 +338,22 @@ export default function EventDetails() {
                 {accountType === 'member' && (
                   <>
                     <button
-                      onClick={() => navigate(`/events/${event.id}/edit`)}
-                      className="w-full border border-white/[0.08] text-[#8A8A9A] hover:text-[#FAFAFA] hover:border-white/20 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                      onClick={handleEditEvent}
+                      className={`w-full border py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                        canManageEvent
+                          ? 'border-white/[0.08] text-[#8A8A9A] hover:text-[#FAFAFA] hover:border-white/20'
+                          : 'border-[#EF4444]/30 text-[#EF4444] hover:bg-[#EF4444]/10'
+                      }`}
                     >
                       Edit Event
                     </button>
                     <button
-                      onClick={() => setConfirmDeleteOpen(true)}
-                      className="w-full border border-[#EF4444]/30 text-[#EF4444] hover:bg-[#EF4444]/10 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                      onClick={handleDeleteEvent}
+                      className={`w-full border py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                        canManageEvent
+                          ? 'border-[#EF4444]/30 text-[#EF4444] hover:bg-[#EF4444]/10'
+                          : 'border-[#EF4444]/20 text-[#EF4444]/70'
+                      }`}
                     >
                       Delete Event
                     </button>
@@ -343,6 +375,11 @@ export default function EventDetails() {
         onConfirm={async () => {
           try {
             if (!event) {
+              setConfirmDeleteOpen(false);
+              return;
+            }
+            if (!canManageEvent) {
+              toast.error('Cannot delete event outside your organization');
               setConfirmDeleteOpen(false);
               return;
             }
