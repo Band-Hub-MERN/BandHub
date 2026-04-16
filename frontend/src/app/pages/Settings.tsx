@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Bell, Shield, User, LogOut } from 'lucide-react';
+import { Bell, User, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '../context/AppContext';
 import { useNavigate } from 'react-router';
@@ -99,7 +99,6 @@ export default function Settings() {
             { key: 'invites' as const, label: 'Organization invites', desc: 'When someone invites you to their org' },
             { key: 'events' as const, label: 'New events', desc: 'When orgs you follow post events' },
             { key: 'bookings' as const, label: 'Booking reminders', desc: '1 hour before your practice session' },
-            { key: 'digest' as const, label: 'Weekly digest', desc: 'Sunday roundup of campus events' },
           ].map(({ key, label, desc }) => (
             <div key={key} className="flex items-center justify-between">
               <div>
@@ -109,24 +108,6 @@ export default function Settings() {
               <Toggle value={notifs[key]} onChange={v => setNotifs(p => ({ ...p, [key]: v }))} />
             </div>
           ))}
-        </div>
-      </div>
-
-      {/* Security */}
-      <div className="bg-[#111113] border border-white/[0.06] rounded-2xl p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <Shield className="w-4 h-4 text-[#FFC904]" />
-          <h3 className="text-[#FAFAFA] font-bold">Security</h3>
-        </div>
-        <div className="space-y-3">
-          <button onClick={() => toast('Feature coming soon')} className="w-full text-left flex items-center justify-between px-4 py-3 bg-[#1C1C1F] rounded-xl hover:bg-[#242428] transition-all">
-            <span className="text-[#FAFAFA] text-sm font-medium">Change Password</span>
-            <span className="text-[#8A8A9A] text-xs">→</span>
-          </button>
-          <button onClick={() => toast('Feature coming soon')} className="w-full text-left flex items-center justify-between px-4 py-3 bg-[#1C1C1F] rounded-xl hover:bg-[#242428] transition-all">
-            <span className="text-[#FAFAFA] text-sm font-medium">Two-Factor Authentication</span>
-            <span className="text-[10px] bg-[#22C55E]/10 text-[#22C55E] px-2 py-0.5 rounded font-semibold">Recommended</span>
-          </button>
         </div>
       </div>
 

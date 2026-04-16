@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">GarageBand</string>
-    <string name="nav_home">Home</string>
-    <string name="nav_tickets">Tickets</string>
-    <string name="nav_settings">Settings</string>
-</resources>

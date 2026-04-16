@@ -4,6 +4,8 @@ import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import EmailVerification from './pages/EmailVerification';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import MemberDashboard from './pages/MemberDashboard';
 import GarageBooking from './pages/GarageBooking';
 import OrganizationManagement from './pages/OrganizationManagement';
@@ -18,6 +20,8 @@ export const router = createBrowserRouter([
   { path: '/login', Component: Login },
   { path: '/register', Component: Register },
   { path: '/verify-email', Component: EmailVerification },
+  { path: '/forgot-password', Component: ForgotPassword },
+  { path: '/reset-password', Component: ResetPassword },
   {
     Component: DashboardLayout,
     children: [

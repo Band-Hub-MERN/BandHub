@@ -9,7 +9,13 @@ const GarageEvent = require('./models/garageEvent.js');
 const authToken = require('./authToken.js');
 const { validatePasswordPolicy } = require('./utils/passwordPolicy.js');
 const { hashPassword, verifyPassword } = require('./utils/passwordHash.js');
-const { createVerificationFields, validateEmailAddress, sendVerificationEmail } = require('./utils/emailVerification.js');
+const {
+    createVerificationFields,
+    createPasswordResetFields,
+    validateEmailAddress,
+    sendVerificationEmail,
+    sendPasswordResetEmail
+} = require('./utils/emailVerification.js');
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const RETRYABLE_UNVERIFIED_STATUSES = new Set([
@@ -35,6 +41,7 @@ const GARAGE_DEFAULT_ORG_COLOR = '#FFC904';
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const EMAIL_BASIC_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HEX_COLOR_PATTERN = /^#([0-9A-Fa-f]{6})$/;
+const GENERIC_PASSWORD_RESET_MESSAGE = 'If an account with that email exists, a password reset link has been sent.';
 
 function validationError(res, error, details = []) {
     res.status(400).json({
@@ -353,6 +360,11 @@ function buildRegisterStatus(user) {
     };
 }
 
+function clearPasswordResetFields(user) {
+    user.resetPasswordToken = null;
+    user.resetPasswordExpiresAt = null;
+}
+
 exports.setApp = function (app) {
     app.post('/api/auth/register', async (req, res) => {
         const allowedKeys = new Set(['email', 'password', 'displayName', 'accountType', 'memberRoleLabel']);
@@ -581,6 +593,85 @@ exports.setApp = function (app) {
             accessToken,
             user: buildSafeUser(user)
         });
+    });
+
+    app.post('/api/auth/forgot-password', async (req, res) => {
+        const allowedKeys = new Set(['email']);
+        if (!hasOnlyAllowedKeys(req.body, allowedKeys)) {
+            validationError(res, 'Invalid forgot password payload shape');
+            return;
+        }
+
+        const normalizedEmail = sanitizeEmail(req.body?.email);
+        if (!normalizedEmail) {
+            validationError(res, 'Invalid email address');
+            return;
+        }
+
+        const user = await AccountUser.findOne({ email: normalizedEmail });
+        if (!user) {
+            res.status(200).json({ message: GENERIC_PASSWORD_RESET_MESSAGE });
+            return;
+        }
+
+        const resetFields = createPasswordResetFields();
+        user.resetPasswordToken = resetFields.resetPasswordToken;
+        user.resetPasswordExpiresAt = resetFields.resetPasswordExpiresAt;
+        await user.save();
+
+        try {
+            await sendPasswordResetEmail(user.email, user.resetPasswordToken);
+        }
+        catch (error) {
+            console.error('Failed to send password reset email:', error);
+            clearPasswordResetFields(user);
+            await user.save();
+            res.status(500).json({ error: 'Unable to send a password reset email right now. Please try again later.' });
+            return;
+        }
+
+        res.status(200).json({ message: GENERIC_PASSWORD_RESET_MESSAGE });
+    });
+
+    app.post('/api/auth/reset-password', async (req, res) => {
+        const allowedKeys = new Set(['token', 'password']);
+        if (!hasOnlyAllowedKeys(req.body, allowedKeys)) {
+            validationError(res, 'Invalid reset password payload shape');
+            return;
+        }
+
+        const resetToken = sanitizeString(req.body?.token, { min: 20, max: 256 });
+        const password = req.body?.password;
+
+        if (!resetToken || typeof password !== 'string') {
+            res.status(400).json({ error: 'Missing reset token or password' });
+            return;
+        }
+
+        const policyResult = validatePasswordPolicy(password);
+        if (!policyResult.isValid) {
+            res.status(400).json({ error: 'Password does not meet policy', details: policyResult.errors });
+            return;
+        }
+
+        const user = await AccountUser.findOne({ resetPasswordToken: resetToken });
+        if (!user) {
+            res.status(400).json({ error: 'Reset link is invalid or has already been used.' });
+            return;
+        }
+
+        if (!user.resetPasswordExpiresAt || user.resetPasswordExpiresAt.getTime() < Date.now()) {
+            clearPasswordResetFields(user);
+            await user.save();
+            res.status(400).json({ error: 'Reset link has expired. Please request a new password reset email.' });
+            return;
+        }
+
+        user.passwordHash = await hashPassword(password);
+        clearPasswordResetFields(user);
+        await user.save();
+
+        res.status(200).json({ message: 'Password reset successful. You can sign in with your new password.' });
     });
 
     app.get('/api/auth/verify', async (req, res) => {
@@ -1701,9 +1792,13 @@ exports.setApp = function (app) {
             return;
         }
 
-        const query = authed.user.accountType === 'fan'
-            ? { isPublic: true }
-            : {};
+        const todayIso = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+        const filterDate = sanitizeIsoDate(String(req.query?.date || ''));
+
+        const baseQuery = authed.user.accountType === 'fan' ? { isPublic: true } : {};
+        const query = filterDate
+            ? { ...baseQuery, date: filterDate }
+            : { ...baseQuery, date: { $gte: todayIso } };
 
         const currentUserId = String(authed.user._id);
 
@@ -1818,6 +1913,70 @@ exports.setApp = function (app) {
             isGoing: true,
             alreadyGoing
         });
+    });
+
+    app.post('/api/events/:id/attend', async (req, res) => {
+        const authed = await getAuthedUser(req);
+        if (authed.error) {
+            res.status(authed.status).json({ error: authed.error });
+            return;
+        }
+
+        if (!isValidObjectId(req.params.id)) {
+            validationError(res, 'Invalid event id');
+            return;
+        }
+
+        const eventRow = await GarageEvent.findById(req.params.id);
+        if (!eventRow) {
+            res.status(404).json({ error: 'Event not found' });
+            return;
+        }
+
+        const userId = authed.user._id;
+        const alreadyAttending = eventRow.attendeeIds.some(
+            id => String(id) === String(userId)
+        );
+
+        if (!alreadyAttending) {
+            eventRow.attendeeIds.push(userId);
+            eventRow.attendees = eventRow.attendeeIds.length;
+            await eventRow.save();
+        }
+
+        res.status(200).json({ message: 'Attending' });
+    });
+
+    app.delete('/api/events/:id/attend', async (req, res) => {
+        const authed = await getAuthedUser(req);
+        if (authed.error) {
+            res.status(authed.status).json({ error: authed.error });
+            return;
+        }
+
+        if (!isValidObjectId(req.params.id)) {
+            validationError(res, 'Invalid event id');
+            return;
+        }
+
+        const eventRow = await GarageEvent.findById(req.params.id);
+        if (!eventRow) {
+            res.status(404).json({ error: 'Event not found' });
+            return;
+        }
+
+        const userId = authed.user._id;
+        const beforeLength = eventRow.attendeeIds.length;
+        eventRow.attendeeIds = eventRow.attendeeIds.filter(
+            id => String(id) !== String(userId)
+        );
+
+        if (eventRow.attendeeIds.length !== beforeLength) {
+            eventRow.attendees = eventRow.attendeeIds.length;
+            await eventRow.save();
+        }
+
+        res.status(200).json({ message: 'Unattended' });
     });
 
     app.post('/api/events', async (req, res) => {

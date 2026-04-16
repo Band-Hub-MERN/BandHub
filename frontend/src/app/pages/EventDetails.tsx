@@ -8,6 +8,7 @@ import { deleteEvent, getEventById, getEvents, rsvpToEvent } from '../api/events
 import type { GarageEvent } from '../data/mockData';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { getApiErrorMessage } from '../api/error-handling';
+import { EventCoverImage } from '../components/ui/EventCoverImage';
 
 const CATEGORY_COLORS: Record<string, string> = {
   Band: '#FFC904', Dance: '#A855F7', Acapella: '#22C55E',
@@ -113,7 +114,13 @@ export default function EventDetails() {
     <div className="min-h-full bg-[#09090B]">
       {/* Hero */}
       <div className="relative h-72 overflow-hidden">
-        <img src={event.coverImage} alt={event.title} className="w-full h-full object-cover" />
+        <EventCoverImage
+          src={event.coverImage}
+          title={event.title}
+          category={event.category}
+          orgColor={event.orgColor}
+          className="w-full h-full object-cover"
+        />
         <div className="absolute inset-0 bg-gradient-to-t from-[#09090B] via-[#09090B]/40 to-transparent" />
         {/* Back button */}
         <div className="absolute top-5 left-5">
@@ -232,7 +239,13 @@ export default function EventDetails() {
                       className="flex items-center gap-4 bg-[#111113] border border-white/[0.06] rounded-xl px-4 py-3 cursor-pointer hover:border-white/[0.12] transition-all group"
                     >
                       <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0">
-                        <img src={ev.coverImage} alt={ev.title} className="w-full h-full object-cover" />
+                        <EventCoverImage
+                          src={ev.coverImage}
+                          title={ev.title}
+                          category={ev.category}
+                          orgColor={ev.orgColor}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[#FAFAFA] font-semibold text-sm truncate group-hover:text-[#FFC904] transition-colors">{ev.title}</p>
