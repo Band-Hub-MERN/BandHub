@@ -60,6 +60,7 @@ export interface GarageEvent {
   coverImage: string;
   attendees: number;
   isPublic: boolean;
+  isGoing?: boolean;
 }
 
 export interface Invite {

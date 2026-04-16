@@ -4,7 +4,7 @@ import { ArrowLeft, Calendar, MapPin, Clock, Users, Share2, Globe, ExternalLink 
 import { GARAGE_NAMES, FLOOR_NAMES, formatDate, formatTime } from '../data/mockData';
 import { useApp } from '../context/AppContext';
 import { toast } from 'sonner';
-import { deleteEvent, getEventById, getEvents } from '../api/events';
+import { deleteEvent, getEventById, getEvents, rsvpToEvent } from '../api/events';
 import type { GarageEvent } from '../data/mockData';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { getApiErrorMessage } from '../api/error-handling';
@@ -24,6 +24,7 @@ export default function EventDetails() {
   const [relatedEvents, setRelatedEvents] = useState<GarageEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [rsvpSubmitting, setRsvpSubmitting] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -76,6 +77,38 @@ export default function EventDetails() {
   }
 
   const catColor = CATEGORY_COLORS[event.category] || '#8A8A9A';
+
+  const handleRsvp = async () => {
+    if (!event?.id || rsvpSubmitting) {
+      return;
+    }
+
+    setRsvpSubmitting(true);
+    try {
+      const result = await rsvpToEvent(event.id);
+      setEvent((previous) => {
+        if (!previous) {
+          return previous;
+        }
+
+        return {
+          ...previous,
+          attendees: result.attendees,
+          isGoing: result.isGoing,
+        };
+      });
+
+      if (result.alreadyGoing) {
+        toast.info('You are already marked as going.');
+      } else {
+        toast.success('You\'re going!', { description: `We'll remind you 1h before ${event.title}` });
+      }
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Unable to update attendance right now.'));
+    } finally {
+      setRsvpSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-full bg-[#09090B]">
@@ -249,31 +282,27 @@ export default function EventDetails() {
               {/* Attendance */}
               <div className="mb-5">
                 <p className="text-[#8A8A9A] text-xs font-semibold uppercase tracking-wider mb-2">Attendance</p>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="flex -space-x-2">
-                    {['AB', 'JL', 'SP', 'CM'].map(i => (
-                      <div key={i} className="w-7 h-7 rounded-full bg-[#1C1C1F] border-2 border-[#111113] flex items-center justify-center text-[10px] font-bold text-[#8A8A9A]">{i}</div>
-                    ))}
-                  </div>
-                  <span className="text-[#8A8A9A] text-sm">+{event.attendees - 4} going</span>
+                <div className="mb-2">
+                  <span className="text-[#8A8A9A] text-sm">{event.attendees} going</span>
                 </div>
                 <div className="bg-[#1C1C1F] rounded-xl h-2 overflow-hidden">
                   <div
                     className="h-full rounded-xl bg-gradient-to-r from-[#FFC904] to-[#FFD84D]"
-                    style={{ width: `${Math.min((event.attendees / 300) * 100, 100)}%` }}
+                    style={{ width: `${Math.min((event.attendees / 100) * 100, 100)}%` }}
                   />
                 </div>
                 <p className="text-[#8A8A9A] text-xs mt-1.5">
-                  {event.attendees} of ~300 spots filled
+                  {event.attendees} of ~100 spots filled
                 </p>
               </div>
 
               <div className="space-y-2">
                 <button
-                  onClick={() => toast.success('You\'re going!', { description: `We'll remind you 1h before ${event.title}` })}
+                  onClick={() => void handleRsvp()}
+                  disabled={rsvpSubmitting || Boolean(event.isGoing)}
                   className="w-full bg-[#FFC904] hover:bg-[#FFD84D] text-[#09090B] py-3 rounded-xl font-bold text-sm transition-all"
                 >
-                  I'm Going
+                  {event.isGoing ? 'You\'re Going' : rsvpSubmitting ? 'Saving...' : 'I\'m Going'}
                 </button>
                 <button
                   onClick={() => { copyToClipboard(window.location.href); toast.success('Link copied!'); }}
