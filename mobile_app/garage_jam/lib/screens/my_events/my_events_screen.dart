@@ -20,24 +20,14 @@ class MyEventsScreen extends StatefulWidget {
   State<MyEventsScreen> createState() => _MyEventsScreenState();
 }
 
-class _MyEventsScreenState extends State<MyEventsScreen>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tabController;
-
+class _MyEventsScreenState extends State<MyEventsScreen> {
   List<Booking> _bookings = [];
   bool _bookingsLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 
   Future<void> _load() async {
@@ -85,7 +75,7 @@ class _MyEventsScreenState extends State<MyEventsScreen>
   List<Booking> get _upcomingBookings {
     final today = _todayMidnight();
     return _bookings.where((b) {
-      if (b.isWeekly) return true; // Weekly bookings always show as upcoming
+      if (b.isWeekly) return true;
       try {
         return !DateTime.parse(b.date).isBefore(today);
       } catch (_) {
@@ -93,24 +83,10 @@ class _MyEventsScreenState extends State<MyEventsScreen>
       }
     }).toList()
       ..sort((a, b) {
-        // Weekly bookings sort to top, then by date
         if (a.isWeekly && !b.isWeekly) return -1;
         if (!a.isWeekly && b.isWeekly) return 1;
         return a.date.compareTo(b.date);
       });
-  }
-
-  List<Booking> get _pastBookings {
-    final today = _todayMidnight();
-    return _bookings.where((b) {
-      if (b.isWeekly) return false; // Weekly bookings never appear in past
-      try {
-        return DateTime.parse(b.date).isBefore(today);
-      } catch (_) {
-        return false;
-      }
-    }).toList()
-      ..sort((a, b) => b.date.compareTo(a.date)); // Most recent first
   }
 
   DateTime _todayMidnight() {
@@ -127,16 +103,8 @@ class _MyEventsScreenState extends State<MyEventsScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(),
-            _buildTabBar(),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildUpcomingTab(),
-                  _buildPastTab(),
-                ],
-              ),
-            ),
+            const SizedBox(height: 8),
+            Expanded(child: _buildBody()),
           ],
         ),
       ),
@@ -164,47 +132,25 @@ class _MyEventsScreenState extends State<MyEventsScreen>
     );
   }
 
-  Widget _buildTabBar() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: TabBar(
-        controller: _tabController,
-        labelColor: ucfGold,
-        unselectedLabelColor: textSecondary,
-        indicatorColor: ucfGold,
-        indicatorSize: TabBarIndicatorSize.label,
-        labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-        unselectedLabelStyle:
-            const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
-        tabs: const [
-          Tab(text: 'Upcoming'),
-          Tab(text: 'Past'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUpcomingTab() {
+  Widget _buildBody() {
     return Consumer<EventProvider>(
       builder: (context, ep, _) {
         final auth = context.read<AuthProvider>();
-        final isMemberWithOrg = auth.currentUser?.isMember == true;
+        final isMember = auth.currentUser?.isMember == true;
 
         if (ep.myEventsLoadState == EventLoadState.loading || _bookingsLoading) {
           return _buildShimmer();
         }
 
         if (ep.myEventsLoadState == EventLoadState.error) {
-          return _buildError(() => _load());
+          return _buildError();
         }
 
         final upcomingEvents = ep.upcomingMyEvents;
-        final upcomingBookings =
-            isMemberWithOrg ? _upcomingBookings : <Booking>[];
+        final upcomingBookings = isMember ? _upcomingBookings : <Booking>[];
 
         if (upcomingEvents.isEmpty && upcomingBookings.isEmpty) {
-          return _buildEmpty(
-              'No upcoming events tracked yet.\nFind something on the Home tab!');
+          return _buildEmpty();
         }
 
         return RefreshIndicator(
@@ -223,59 +169,6 @@ class _MyEventsScreenState extends State<MyEventsScreen>
                 if (upcomingBookings.isNotEmpty)
                   _buildSectionHeader('Tracked Events'),
                 ...upcomingEvents.map((event) => EventCard(
-                      event: event,
-                      isAttending: ep.isAttending(event.id),
-                      isLoggedIn: auth.isLoggedIn,
-                      onTap: () =>
-                          context.push(AppRoutes.eventDetailPath(event.id)),
-                      onTrackTap: () => _handleTrack(event.id),
-                    )),
-              ],
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildPastTab() {
-    return Consumer<EventProvider>(
-      builder: (context, ep, _) {
-        final auth = context.read<AuthProvider>();
-
-        if (ep.myEventsLoadState == EventLoadState.loading) {
-          return _buildShimmer();
-        }
-
-        if (ep.myEventsLoadState == EventLoadState.error) {
-          return _buildError(() => _load());
-        }
-
-        final pastEvents = ep.pastMyEvents;
-        final pastBookings = auth.currentUser?.isMember == true
-            ? _pastBookings
-            : <Booking>[];
-
-        if (pastEvents.isEmpty && pastBookings.isEmpty) {
-          return _buildEmpty('No past events to show.');
-        }
-
-        return RefreshIndicator(
-          color: ucfGold,
-          backgroundColor: surfaceDark,
-          onRefresh: _load,
-          child: ListView(
-            padding: const EdgeInsets.only(bottom: 20),
-            children: [
-              if (pastBookings.isNotEmpty) ...[
-                _buildSectionHeader('Past Bookings'),
-                ...pastBookings.map((b) => BookingCard(booking: b)),
-                const SizedBox(height: 8),
-              ],
-              if (pastEvents.isNotEmpty) ...[
-                if (pastBookings.isNotEmpty)
-                  _buildSectionHeader('Past Events'),
-                ...pastEvents.map((event) => EventCard(
                       event: event,
                       isAttending: ep.isAttending(event.id),
                       isLoggedIn: auth.isLoggedIn,
@@ -325,7 +218,7 @@ class _MyEventsScreenState extends State<MyEventsScreen>
     );
   }
 
-  Widget _buildEmpty(String message) {
+  Widget _buildEmpty() {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -335,27 +228,30 @@ class _MyEventsScreenState extends State<MyEventsScreen>
             const Icon(Icons.bookmark_border_outlined,
                 size: 48, color: textSecondary),
             const SizedBox(height: 16),
-            Text(message, style: bodySecondary, textAlign: TextAlign.center),
+            Text(
+              'No upcoming events tracked yet.\nFind something on the Home tab!',
+              style: bodySecondary,
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildError(VoidCallback onRetry) {
+  Widget _buildError() {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.wifi_off_outlined,
-                size: 48, color: textSecondary),
+            const Icon(Icons.wifi_off_outlined, size: 48, color: textSecondary),
             const SizedBox(height: 16),
             Text('Could not load your events.',
                 style: bodySecondary, textAlign: TextAlign.center),
             const SizedBox(height: 20),
-            OutlinedButton(onPressed: onRetry, child: const Text('Retry')),
+            OutlinedButton(onPressed: _load, child: const Text('Retry')),
           ],
         ),
       ),

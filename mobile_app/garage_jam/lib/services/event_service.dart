@@ -16,21 +16,14 @@ class EventService {
     return GarageEvent.fromJson(data);
   }
 
-  // Phase 6 endpoints
+  // POST /api/events/:id/rsvp — mark the user as going
   static Future<void> attendEvent(String id, String token) async {
-    await ApiClient.post('/api/events/$id/attend', {}, token: token);
+    await ApiClient.post('/api/events/$id/rsvp', {}, token: token);
   }
 
+  // DELETE /api/events/:id/attend — remove the user from attendees
   static Future<void> unattendEvent(String id, String token) async {
     await ApiClient.delete('/api/events/$id/attend', token: token);
-  }
-
-  // GET /api/events/attending returns a raw array []
-  static Future<List<GarageEvent>> getAttendingEvents(String token) async {
-    final list = await ApiClient.getList('/api/events/attending', token: token);
-    return list
-        .map((e) => GarageEvent.fromJson(e as Map<String, dynamic>))
-        .toList();
   }
 
   // GET /api/events?date=YYYY-MM-DD — events for a specific date (past or future)

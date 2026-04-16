@@ -2041,13 +2041,18 @@ exports.setApp = function (app) {
         }
 
         const userId = authed.user._id;
-        const alreadyAttending = eventRow.attendeeIds.some(
+
+        if (!Array.isArray(eventRow.attendeeUserIds)) {
+            eventRow.attendeeUserIds = [];
+        }
+
+        const alreadyAttending = eventRow.attendeeUserIds.some(
             id => String(id) === String(userId)
         );
 
         if (!alreadyAttending) {
-            eventRow.attendeeIds.push(userId);
-            eventRow.attendees = eventRow.attendeeIds.length;
+            eventRow.attendeeUserIds.push(userId);
+            eventRow.attendees = eventRow.attendeeUserIds.length;
             await eventRow.save();
         }
 
@@ -2073,13 +2078,18 @@ exports.setApp = function (app) {
         }
 
         const userId = authed.user._id;
-        const beforeLength = eventRow.attendeeIds.length;
-        eventRow.attendeeIds = eventRow.attendeeIds.filter(
+
+        if (!Array.isArray(eventRow.attendeeUserIds)) {
+            eventRow.attendeeUserIds = [];
+        }
+
+        const beforeLength = eventRow.attendeeUserIds.length;
+        eventRow.attendeeUserIds = eventRow.attendeeUserIds.filter(
             id => String(id) !== String(userId)
         );
 
-        if (eventRow.attendeeIds.length !== beforeLength) {
-            eventRow.attendees = eventRow.attendeeIds.length;
+        if (eventRow.attendeeUserIds.length !== beforeLength) {
+            eventRow.attendees = eventRow.attendeeUserIds.length;
             await eventRow.save();
         }
 

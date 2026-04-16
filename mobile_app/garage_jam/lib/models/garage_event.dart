@@ -14,7 +14,7 @@ class GarageEvent {
   final String coverImage;
   final int attendees;
   final bool isPublic;
-  final List<String> attendeeIds;
+  final bool isGoing;
 
   const GarageEvent({
     required this.id,
@@ -32,7 +32,7 @@ class GarageEvent {
     required this.coverImage,
     required this.attendees,
     required this.isPublic,
-    this.attendeeIds = const [],
+    this.isGoing = false,
   });
 
   static const Map<int, String> floorNames = {
@@ -44,8 +44,6 @@ class GarageEvent {
 
   String get floorLabel => floorNames[floor] ?? 'Floor $floor';
   String get garageLabel => 'Garage $garageId · ${floorNames[floor] ?? 'Floor $floor'}';
-
-  bool isAttendedBy(String userId) => attendeeIds.contains(userId);
 
   factory GarageEvent.fromJson(Map<String, dynamic> json) {
     return GarageEvent(
@@ -64,10 +62,7 @@ class GarageEvent {
       coverImage:  json['coverImage']  as String? ?? '',
       attendees:   (json['attendees']  as num?)?.toInt() ?? 0,
       isPublic:    json['isPublic']    as bool? ?? true,
-      attendeeIds: (json['attendeeIds'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          [],
+      isGoing:     json['isGoing']     as bool? ?? false,
     );
   }
 }
