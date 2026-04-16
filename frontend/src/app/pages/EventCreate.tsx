@@ -3,9 +3,16 @@ import { useNavigate, useParams } from 'react-router';
 import { ArrowLeft, Calendar, MapPin, Clock, Globe, Lock, Image, ChevronDown, AlertCircle, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { GARAGES, GarageId, GARAGE_NAMES, FLOOR_NAMES, CATEGORIES, TIME_LABELS, TIME_SLOTS, formatTime, Organization } from '../data/mockData';
-import { createEvent, getEventById, updateEvent } from '../api/events';
+import { createEvent, getEventById, updateEvent, uploadEventImage } from '../api/events';
 import { getOrganizations } from '../api/organization';
 import { getApiErrorMessage } from '../api/error-handling';
+
+function toDateInputValue(dateValue: Date): string {
+  const year = dateValue.getFullYear();
+  const month = String(dateValue.getMonth() + 1).padStart(2, '0');
+  const day = String(dateValue.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 export default function EventCreate() {
   const navigate = useNavigate();
@@ -14,7 +21,7 @@ export default function EventCreate() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Band');
-  const [date, setDate] = useState('2026-04-15');
+  const [date, setDate] = useState(() => toDateInputValue(new Date()));
   const [startTime, setStartTime] = useState('19:00');
   const [endTime, setEndTime] = useState('21:00');
   const [garage, setGarage] = useState<GarageId>('A');
@@ -22,6 +29,8 @@ export default function EventCreate() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [selectedOrgId, setSelectedOrgId] = useState('');
   const [isPublic, setIsPublic] = useState(true);
+  const [coverImage, setCoverImage] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -55,12 +64,13 @@ export default function EventCreate() {
         setTitle(existingEvent.title || '');
         setDescription(existingEvent.description || '');
         setCategory(existingEvent.category || 'Band');
-        setDate(existingEvent.date || '2026-04-15');
+        setDate(existingEvent.date || toDateInputValue(new Date()));
         setStartTime(existingEvent.startTime || '19:00');
         setEndTime(existingEvent.endTime || '21:00');
         setGarage((existingEvent.garageId as GarageId) || 'A');
         setFloor(Number(existingEvent.floor) || 1);
         setIsPublic(Boolean(existingEvent.isPublic));
+        setCoverImage(existingEvent.coverImage || '');
         setSelectedOrgId(existingEvent.orgId || '');
       } catch {
         toast.error('Unable to load event for editing');
@@ -99,6 +109,7 @@ export default function EventCreate() {
         floor,
         isPublic,
         orgId: selectedOrgId,
+        coverImage,
       };
 
       if (isEditMode && id) {
@@ -116,6 +127,31 @@ export default function EventCreate() {
       toast.error(getApiErrorMessage(error, 'Unable to create event.'));
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleCoverImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose a valid image file');
+      event.target.value = '';
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const uploadedImageUrl = await uploadEventImage(file);
+      setCoverImage(uploadedImageUrl);
+      toast.success('Cover image uploaded');
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Unable to upload image'));
+    } finally {
+      setUploadingImage(false);
+      event.target.value = '';
     }
   };
 
@@ -146,11 +182,30 @@ export default function EventCreate() {
           {/* Left: Main form */}
           <div className="space-y-5">
             {/* Cover image placeholder */}
-            <div className="h-48 rounded-2xl border-2 border-dashed border-white/[0.10] flex flex-col items-center justify-center bg-[#111113] hover:border-[#FFC904]/30 hover:bg-[#FFC904]/[0.02] transition-all cursor-pointer group">
-              <Image className="w-8 h-8 text-[#2A2A2F] group-hover:text-[#FFC904]/50 transition-colors mb-3" />
-              <p className="text-[#8A8A9A] text-sm font-medium">Upload cover image</p>
-              <p className="text-[#8A8A9A] text-xs mt-1">Recommended: 1200×630px</p>
-            </div>
+            <label
+              htmlFor="event-cover-upload"
+              className="h-48 rounded-2xl border-2 border-dashed border-white/[0.10] flex flex-col items-center justify-center bg-[#111113] hover:border-[#FFC904]/30 hover:bg-[#FFC904]/[0.02] transition-all cursor-pointer group relative overflow-hidden"
+            >
+              {coverImage ? (
+                <img src={coverImage} alt="Event cover" className="absolute inset-0 w-full h-full object-cover" />
+              ) : null}
+              <div className={`absolute inset-0 ${coverImage ? 'bg-black/45' : ''}`} />
+              <div className="relative z-10 flex flex-col items-center">
+                <Image className="w-8 h-8 text-[#2A2A2F] group-hover:text-[#FFC904]/70 transition-colors mb-3" />
+                <p className="text-[#8A8A9A] text-sm font-medium">
+                  {uploadingImage ? 'Uploading image...' : coverImage ? 'Change cover image' : 'Upload cover image'}
+                </p>
+                <p className="text-[#8A8A9A] text-xs mt-1">Recommended: 1200×630px (max 5MB)</p>
+              </div>
+              <input
+                id="event-cover-upload"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleCoverImageSelect}
+                disabled={uploadingImage}
+              />
+            </label>
 
             {/* Title */}
             <div>
@@ -416,7 +471,7 @@ export default function EventCreate() {
                 <button
                   type="submit"
                   onClick={handleSubmit}
-                  disabled={submitting || organizations.length === 0 || !selectedOrgId}
+                  disabled={submitting || uploadingImage || organizations.length === 0 || !selectedOrgId}
                   className="w-full bg-[#FFC904] hover:bg-[#FFD84D] disabled:opacity-60 text-[#09090B] py-3 rounded-xl font-bold text-sm transition-all"
                 >
                   {submitting ? (
@@ -424,7 +479,7 @@ export default function EventCreate() {
                       <span className="w-4 h-4 border-2 border-[#09090B]/30 border-t-[#09090B] rounded-full animate-spin" />
                       {isEditMode ? 'Saving...' : 'Publishing...'}
                     </span>
-                  ) : organizations.length === 0 ? 'Join an organization first' : isEditMode ? 'Save Changes' : 'Publish Event'}
+                  ) : uploadingImage ? 'Uploading image...' : organizations.length === 0 ? 'Join an organization first' : isEditMode ? 'Save Changes' : 'Publish Event'}
                 </button>
                 <button
                   type="button"

@@ -1,7 +1,7 @@
 import { Outlet, NavLink, useNavigate } from 'react-router';
 import {
   LayoutDashboard, Building2, Users, Mail, Calendar,
-  Settings, LogOut, Bell, Search, Music2, Zap
+  Settings, LogOut, Bell, Music2, Zap
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useEffect, useState } from 'react';
@@ -19,12 +19,15 @@ const navItems = [
 ];
 
 export default function DashboardLayout() {
-  const { user, logout, accountType, isLoggedIn } = useApp();
+  const { user, logout, accountType, isLoggedIn, isAuthLoading } = useApp();
   const navigate = useNavigate();
-  const [searchFocused, setSearchFocused] = useState(false);
   const [pendingInviteCount, setPendingInviteCount] = useState(0);
 
   useEffect(() => {
+    if (isAuthLoading) {
+      return;
+    }
+
     if (!isLoggedIn) {
       navigate('/login');
       return;
@@ -43,9 +46,9 @@ export default function DashboardLayout() {
         setPendingInviteCount(0);
       }
     })();
-  }, [accountType, isLoggedIn, navigate]);
+  }, [accountType, isAuthLoading, isLoggedIn, navigate]);
 
-  if (!isLoggedIn) {
+  if (isAuthLoading || !isLoggedIn) {
     return null;
   }
 
@@ -119,7 +122,10 @@ export default function DashboardLayout() {
 
         {/* User section */}
         <div className="px-3 pb-4 border-t border-white/[0.06] pt-3 relative">
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/[0.04] cursor-pointer transition-all group">
+          <div
+            onClick={() => navigate('/settings')}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/[0.04] cursor-pointer transition-all group"
+          >
             <div className="w-7 h-7 rounded-full bg-[#FFC904] flex items-center justify-center flex-shrink-0 shadow-[0_0_8px_rgba(255,201,4,0.3)]">
               <span className="text-[#09090B] font-bold" style={{ fontSize: '10px' }}>{user?.avatar}</span>
             </div>
@@ -128,7 +134,10 @@ export default function DashboardLayout() {
               <p className="text-[#8A8A9A] truncate" style={{ fontSize: '10px' }}>{user?.email}</p>
             </div>
             <button
-              onClick={handleLogout}
+              onClick={(event) => {
+                event.stopPropagation();
+                handleLogout();
+              }}
               className="opacity-0 group-hover:opacity-100 transition-opacity text-[#8A8A9A] hover:text-[#EF4444]"
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -144,17 +153,6 @@ export default function DashboardLayout() {
 
         {/* Header */}
         <header className="h-14 border-b border-white/[0.06] flex items-center px-6 gap-4 bg-[#09090B]/80 backdrop-blur-sm flex-shrink-0 relative z-10">
-          <div className={`flex items-center gap-2 flex-1 max-w-xs bg-[#1C1C1F] rounded-lg px-3 py-2 border transition-all ${searchFocused ? 'border-[#FFC904]/40' : 'border-transparent'}`}>
-            <Search className="w-3.5 h-3.5 text-[#8A8A9A]" />
-            <input
-              type="text"
-              placeholder="Search garages, events, orgs..."
-              className="bg-transparent text-[#FAFAFA] placeholder:text-[#8A8A9A] outline-none flex-1"
-              style={{ fontSize: '12px' }}
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setSearchFocused(false)}
-            />
-          </div>
           <div className="flex items-center gap-2 ml-auto">
             {accountType === 'member' && (
               <button
@@ -166,7 +164,10 @@ export default function DashboardLayout() {
                 New Event
               </button>
             )}
-            <button className="relative w-8 h-8 rounded-lg hover:bg-white/[0.06] flex items-center justify-center text-[#8A8A9A] hover:text-[#FAFAFA] transition-all">
+            <button
+              onClick={() => navigate('/invites')}
+              className="relative w-8 h-8 rounded-lg hover:bg-white/[0.06] flex items-center justify-center text-[#8A8A9A] hover:text-[#FAFAFA] transition-all"
+            >
               <Bell className="w-4 h-4" />
               <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-[#FFC904] rounded-full shadow-[0_0_4px_rgba(255,201,4,0.6)]"></span>
             </button>

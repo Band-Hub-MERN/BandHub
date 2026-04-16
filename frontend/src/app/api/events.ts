@@ -28,6 +28,19 @@ export async function createEvent(payload: {
   return response.data;
 }
 
+export async function uploadEventImage(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('image', file);
+
+  const response = await apiClient.post<{ imageUrl: string }>('/api/uploads/event-image', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+
+  return response.data.imageUrl;
+}
+
 export async function updateEvent(id: string, payload: Partial<GarageEvent>): Promise<void> {
   await apiClient.patch(`/api/events/${encodeURIComponent(id)}`, payload);
 }

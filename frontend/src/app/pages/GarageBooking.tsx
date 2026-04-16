@@ -37,7 +37,7 @@ export default function GarageBooking() {
   const [queryBookingHandled, setQueryBookingHandled] = useState(false);
   const [bookingToCancelId, setBookingToCancelId] = useState<string | null>(null);
 
-  const today = '2026-04-07';
+  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const bookingIdFromQuery = new URLSearchParams(window.location.search).get('bookingId') || '';
 
   const applyBookingToEditor = useCallback((booking: Booking) => {
