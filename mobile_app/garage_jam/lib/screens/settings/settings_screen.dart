@@ -276,13 +276,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           value: prefs.events,
           onChanged: (v) => _toggleNotif('events', v),
         ),
-        _buildDivider(),
-        _buildToggleRow(
-          label: 'Invites',
-          subtitle: 'Organization invitations',
-          value: prefs.invites,
-          onChanged: (v) => _toggleNotif('invites', v),
-        ),
         if (user.isMember) ...[
           _buildDivider(),
           _buildToggleRow(

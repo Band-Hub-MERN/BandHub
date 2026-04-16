@@ -6,7 +6,6 @@ import 'package:table_calendar/table_calendar.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/event_provider.dart';
 import '../../models/garage_event.dart';
-import '../../services/event_service.dart';
 import '../../widgets/event_card.dart';
 import '../../widgets/garage_filter_chips.dart';
 import '../../theme/colors.dart';
@@ -26,10 +25,6 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
-  // Holds events fetched for a specific past date
-  List<GarageEvent> _dateEvents = [];
-  bool _dateEventsLoading = false;
-
   @override
   void initState() {
     super.initState();
@@ -39,35 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
     if (auth.token == null) return;
-
-    final eventProvider = context.read<EventProvider>();
-    await eventProvider.loadEvents(auth.token!);
-
-    if (!mounted) return;
-    await eventProvider.loadAttendingEvents(auth.token!);
-  }
-
-  bool _isPastDay(DateTime day) {
-    final today = DateTime.now();
-    return day.isBefore(DateTime(today.year, today.month, today.day));
-  }
-
-  Future<void> _loadDateEvents(DateTime day) async {
-    final auth = context.read<AuthProvider>();
-    if (auth.token == null) return;
-
-    final dateStr =
-        '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
-
-    setState(() => _dateEventsLoading = true);
-    try {
-      final events = await EventService.getEventsByDate(dateStr, auth.token!);
-      if (mounted) setState(() => _dateEvents = events);
-    } on ApiException {
-      if (mounted) setState(() => _dateEvents = []);
-    } finally {
-      if (mounted) setState(() => _dateEventsLoading = false);
-    }
+    await context.read<EventProvider>().loadEvents(auth.token!);
   }
 
   Future<void> _handleTrack(String eventId, {GarageEvent? hint}) async {
@@ -103,16 +70,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<GarageEvent> _applyFilters(List<GarageEvent> events) {
-    // For past dates use the separately fetched list, not the upcoming feed
-    final source = (_selectedDay != null && _isPastDay(_selectedDay!))
-        ? _dateEvents
-        : events;
-
-    var filtered = source;
+    var filtered = events;
     if (_selectedGarage != null) {
       filtered = filtered.where((e) => e.garageId == _selectedGarage).toList();
     }
-    if (_selectedDay != null && !_isPastDay(_selectedDay!)) {
+    if (_selectedDay != null) {
       filtered = _eventsForDay(_selectedDay!, filtered);
     }
     return filtered;
@@ -171,31 +133,31 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCalendar(List<GarageEvent> events) {
+    final today = DateTime.now();
+    final todayMidnight = DateTime(today.year, today.month, today.day);
     return TableCalendar<GarageEvent>(
-      firstDay: DateTime.now().subtract(const Duration(days: 365)),
-      lastDay: DateTime.now().add(const Duration(days: 365)),
+      firstDay: todayMidnight,
+      lastDay: todayMidnight.add(const Duration(days: 365)),
       focusedDay: _focusedDay,
       calendarFormat: CalendarFormat.week,
       availableCalendarFormats: const {CalendarFormat.week: 'Week'},
       selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+      enabledDayPredicate: (day) {
+        final normalizedDay = DateTime(day.year, day.month, day.day);
+        return !normalizedDay.isBefore(todayMidnight);
+      },
       eventLoader: (day) => _eventsForDay(day, events),
       onDaySelected: (selectedDay, focusedDay) {
         final deselect = isSameDay(_selectedDay, selectedDay);
         setState(() {
           _selectedDay = deselect ? null : selectedDay;
           _focusedDay = focusedDay;
-          if (deselect) _dateEvents = [];
         });
-        // Fetch from API when tapping a past date
-        if (!deselect && _isPastDay(selectedDay)) {
-          _loadDateEvents(selectedDay);
-        }
       },
       onPageChanged: (focusedDay) {
         setState(() => _focusedDay = focusedDay);
       },
       calendarStyle: CalendarStyle(
-        // Today
         todayDecoration: BoxDecoration(
           color: ucfGold.withOpacity(0.25),
           shape: BoxShape.circle,
@@ -204,7 +166,6 @@ class _HomeScreenState extends State<HomeScreen> {
           color: ucfGold,
           fontWeight: FontWeight.bold,
         ),
-        // Selected day
         selectedDecoration: const BoxDecoration(
           color: ucfGold,
           shape: BoxShape.circle,
@@ -213,11 +174,10 @@ class _HomeScreenState extends State<HomeScreen> {
           color: ucfBlack,
           fontWeight: FontWeight.bold,
         ),
-        // Default days
         defaultTextStyle: const TextStyle(color: ucfWhite),
         weekendTextStyle: const TextStyle(color: ucfWhite),
+        disabledTextStyle: const TextStyle(color: Colors.transparent),
         outsideDaysVisible: false,
-        // Event dot
         markerDecoration: const BoxDecoration(
           color: ucfGold,
           shape: BoxShape.circle,
@@ -248,7 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildBody() {
     return Consumer<EventProvider>(
       builder: (context, ep, _) {
-        if (ep.loadState == EventLoadState.loading || _dateEventsLoading) {
+        if (ep.loadState == EventLoadState.loading) {
           return _buildShimmer();
         }
         if (ep.loadState == EventLoadState.error) {

@@ -21,9 +21,6 @@ class EventProvider extends ChangeNotifier {
 
   bool isAttending(String eventId) => _attendedIds.contains(eventId);
 
-  List<GarageEvent> get attendedEvents =>
-      _events.where((e) => _attendedIds.contains(e.id)).toList();
-
   List<GarageEvent> get upcomingMyEvents {
     final now = DateTime.now();
     return _myEvents.where((e) => _isUpcoming(e, now)).toList()
@@ -63,11 +60,6 @@ class EventProvider extends ChangeNotifier {
     }
   }
 
-  DateTime _todayMidnight() {
-    final now = DateTime.now();
-    return DateTime(now.year, now.month, now.day);
-  }
-
   Future<void> loadEvents(String token) async {
     _loadState = EventLoadState.loading;
     _errorMessage = null;
@@ -76,11 +68,29 @@ class EventProvider extends ChangeNotifier {
     try {
       _events = await EventService.getEvents(token);
       _loadState = EventLoadState.loaded;
+      // Sync attended state from isGoing field returned by the API
+      _syncAttendedFromEvents(_events);
     } on ApiException catch (e) {
       _errorMessage = e.message;
       _loadState = EventLoadState.error;
     }
     notifyListeners();
+  }
+
+  /// Reads isGoing flags from a list of events and syncs _attendedIds + _myEvents.
+  void _syncAttendedFromEvents(List<GarageEvent> events) {
+    for (final e in events) {
+      if (e.isGoing) {
+        _attendedIds.add(e.id);
+        if (!_myEvents.any((m) => m.id == e.id)) {
+          _myEvents.add(e);
+        }
+      } else {
+        // Remove from attended/my-events if the server says we're no longer going
+        _attendedIds.remove(e.id);
+        _myEvents.removeWhere((m) => m.id == e.id);
+      }
+    }
   }
 
   Future<void> toggleAttend(String eventId, String token,
@@ -129,25 +139,18 @@ class EventProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> loadAttendingEvents(String token) async {
-    try {
-      final attended = await EventService.getAttendingEvents(token);
-      _attendedIds.addAll(attended.map((e) => e.id));
-      notifyListeners();
-    } on ApiException {
-      // Non-fatal — attended state stays empty
-    }
-  }
+  /// No-op — attended state is now derived from isGoing in loadEvents().
+  Future<void> loadAttendingEvents(String token) async {}
 
-  /// Fetches full event objects for events the user is attending.
-  /// Used by My Events screen to populate upcoming/past lists.
+  /// Refreshes my events by reloading the events feed and reading isGoing flags.
   Future<void> loadMyEvents(String token) async {
     _myEventsLoadState = EventLoadState.loading;
     notifyListeners();
 
     try {
-      _myEvents = await EventService.getAttendingEvents(token);
-      _attendedIds.addAll(_myEvents.map((e) => e.id));
+      final fresh = await EventService.getEvents(token);
+      _events = fresh;
+      _syncAttendedFromEvents(_events);
       _myEventsLoadState = EventLoadState.loaded;
     } on ApiException {
       _myEventsLoadState = EventLoadState.error;
