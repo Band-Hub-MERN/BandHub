@@ -31,7 +31,6 @@ export default function EventCreate() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [selectedOrgId, setSelectedOrgId] = useState('');
   const [isPublic, setIsPublic] = useState(true);
-  const [coverImage, setCoverImage] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -113,7 +112,6 @@ export default function EventCreate() {
         floor,
         isPublic,
         orgId: selectedOrgId,
-        coverImage,
       };
 
       if (isEditMode && id) {
