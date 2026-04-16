@@ -1705,6 +1705,8 @@ exports.setApp = function (app) {
             ? { isPublic: true }
             : {};
 
+        const currentUserId = String(authed.user._id);
+
         const events = await GarageEvent.find(query).sort({ date: 1, startTime: 1 });
         res.status(200).json(events.map((eventRow) => ({
             id: String(eventRow._id),
@@ -1721,7 +1723,10 @@ exports.setApp = function (app) {
             category: eventRow.category,
             coverImage: eventRow.coverImage,
             attendees: eventRow.attendees,
-            isPublic: Boolean(eventRow.isPublic)
+            isPublic: Boolean(eventRow.isPublic),
+            isGoing: Array.isArray(eventRow.attendeeUserIds)
+                ? eventRow.attendeeUserIds.some((attendeeUserId) => String(attendeeUserId) === currentUserId)
+                : false
         })));
     });
 
@@ -1748,6 +1753,8 @@ exports.setApp = function (app) {
             return;
         }
 
+        const currentUserId = String(authed.user._id);
+
         res.status(200).json({
             id: String(eventRow._id),
             title: eventRow.title,
@@ -1763,7 +1770,53 @@ exports.setApp = function (app) {
             category: eventRow.category,
             coverImage: eventRow.coverImage,
             attendees: eventRow.attendees,
-            isPublic: Boolean(eventRow.isPublic)
+            isPublic: Boolean(eventRow.isPublic),
+            isGoing: Array.isArray(eventRow.attendeeUserIds)
+                ? eventRow.attendeeUserIds.some((attendeeUserId) => String(attendeeUserId) === currentUserId)
+                : false
+        });
+    });
+
+    app.post('/api/events/:id/rsvp', async (req, res) => {
+        const authed = await getAuthedUser(req);
+        if (authed.error) {
+            res.status(authed.status).json({ error: authed.error });
+            return;
+        }
+
+        if (!isValidObjectId(req.params.id)) {
+            validationError(res, 'Invalid event id');
+            return;
+        }
+
+        const eventRow = await GarageEvent.findById(req.params.id);
+        if (!eventRow) {
+            res.status(404).json({ error: 'Event not found' });
+            return;
+        }
+
+        if (authed.user.accountType === 'fan' && !eventRow.isPublic) {
+            res.status(403).json({ error: 'This event is members-only' });
+            return;
+        }
+
+        if (!Array.isArray(eventRow.attendeeUserIds)) {
+            eventRow.attendeeUserIds = [];
+        }
+
+        const currentUserId = String(authed.user._id);
+        const alreadyGoing = eventRow.attendeeUserIds.some((attendeeUserId) => String(attendeeUserId) === currentUserId);
+
+        if (!alreadyGoing) {
+            eventRow.attendeeUserIds.push(authed.user._id);
+            eventRow.attendees = Math.max(0, Number(eventRow.attendees) || 0) + 1;
+            await eventRow.save();
+        }
+
+        res.status(200).json({
+            attendees: eventRow.attendees,
+            isGoing: true,
+            alreadyGoing
         });
     });
 

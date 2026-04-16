@@ -60,6 +60,13 @@ const GarageEventSchema = new Schema({
     type: Number,
     default: 0
   },
+  attendeeUserIds: {
+    type: [{
+      type: Schema.Types.ObjectId,
+      ref: 'AccountUsers'
+    }],
+    default: []
+  },
   isPublic: {
     type: Boolean,
     default: true
